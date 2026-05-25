@@ -335,6 +335,11 @@
                     </div>
                     <p>Why GitHub Actions: it integrates directly with the source repository, provides build caches per repo, and runs at no additional cost on this scale. The OCI Ampere A1 compute pool is fully allocated to the OKE worker nodes, so an in-tenancy CI runner is not an option here.</p>
                     <p>Builds target <code>linux/arm64</code> only, matching the Ampere A1 worker node architecture. The build itself runs natively on the GitHub-hosted amd64 runner; only the binary is cross-compiled via <code>docker buildx</code>. This avoids QEMU emulation entirely.</p>
+                    <p>The four private OCIR repositories holding the images:</p>
+                    <figure class="figure">
+                        <img src="/img/ocir.png" alt="OCI Container Registry showing infra-frontend, cv-frontend, urlshortener-frontend, urlshortener-backend repositories with image counts and sizes" loading="lazy">
+                        <figcaption>OCI Container Registry — four private repositories, one per service.</figcaption>
+                    </figure>
                 </div>
             </article>
 
