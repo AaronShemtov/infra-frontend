@@ -500,19 +500,23 @@ body {
 }
 
 /* ---------- Figures with embedded screenshots ----------
-   Constrained max-width + centered keeps screenshots readable on wide
-   monitors without dominating the layout. */
+   max-width: 100% keeps the figure inside its parent container
+   (experience-body). The image then fits within the figure. */
 .figure {
     margin: 1.25rem auto;
-    max-width: 700px;
+    max-width: 100%;
 }
 .figure img {
     display: block;
     max-width: 100%;
+    width: auto;
     height: auto;
     border-radius: 6px;
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
+    /* Center the image inside the figure when its natural size is
+       smaller than the available width. */
+    margin: 0 auto;
 }
 .figure figcaption {
     font-size: 0.85rem;
