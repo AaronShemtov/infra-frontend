@@ -483,118 +483,28 @@ body {
 }
 
 /* ---------- Inline SVG diagrams ----------
-   Diagrams are pure SVG with CSS variables, so they adapt to dark/light
-   theme automatically. ViewBox-based sizing keeps them crisp on retina
-   displays and responsive on small screens. */
+   The SVGs use hardcoded fill/stroke attributes that work in both themes
+   (semi-transparent backgrounds, fixed accent colors). Text inside SVG
+   uses fill="currentColor" so it inherits the text color set here.
+   The wrapper is constrained in width and centered so diagrams don't
+   stretch full-page on wide monitors. */
 .diagram-wrap {
-    margin: 1rem 0 1.25rem;
-    overflow-x: auto;
+    margin: 1rem auto 1.25rem;
+    max-width: 640px;
+    color: var(--text);
 }
 .diagram {
     display: block;
-    max-width: 100%;
+    width: 100%;
     height: auto;
-    margin: 0 auto;
 }
 
-/* Standard box — used for in-cluster components. */
-.diagram-box {
-    fill: var(--bg-elevated);
-    stroke: var(--border);
-    stroke-width: 1;
-}
-/* Edge box — used for actors outside the cluster (Internet, Cloudflare, DB). */
-.diagram-box-edge {
-    fill: var(--bg);
-    stroke: var(--accent);
-    stroke-width: 1.5;
-}
-/* Accent box — used to draw attention to key components (Envoy, Flux, GHA). */
-.diagram-box-accent {
-    fill: var(--bg-elevated);
-    stroke: var(--accent);
-    stroke-width: 1.5;
-}
-/* Inner box — used for per-pod cards nested inside a namespace box. */
-.diagram-box-inner {
-    fill: var(--bg);
-    stroke: var(--border);
-    stroke-width: 1;
-}
-/* Namespace boundary — dashed border. */
-.diagram-ns {
-    fill: none;
-    stroke: var(--text-muted);
-    stroke-width: 1;
-    stroke-dasharray: 4 3;
-    opacity: 0.7;
-}
-/* Cluster boundary — slightly heavier dashed border. */
-.diagram-cluster {
-    fill: none;
-    stroke: var(--accent);
-    stroke-width: 1.5;
-    stroke-dasharray: 6 4;
-    opacity: 0.6;
-}
-
-.diagram-text {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 14px;
-    fill: var(--text);
-}
-.diagram-text-small {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 12px;
-    fill: var(--text);
-}
-.diagram-text-xsmall {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 10.5px;
-    fill: var(--text-muted);
-}
-.diagram-text-edge {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 14px;
-    fill: var(--text);
-}
-.diagram-text-edge-small {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 11.5px;
-    fill: var(--text-muted);
-}
-.diagram-cluster-label {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11px;
-    fill: var(--accent);
-    opacity: 0.85;
-}
-.diagram-label {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 11px;
-    fill: var(--text-muted);
-}
-
-.diagram-arrow {
-    stroke: var(--accent);
-    stroke-width: 1.5;
-    fill: none;
-}
-.diagram-arrow-light {
-    stroke: var(--text-muted);
-    stroke-width: 1;
-    fill: none;
-    opacity: 0.5;
-    stroke-dasharray: 3 3;
-}
-.arrow-head {
-    fill: var(--accent);
-}
-
-/* ---------- Figures with embedded screenshots ---------- */
+/* ---------- Figures with embedded screenshots ----------
+   Constrained max-width + centered keeps screenshots readable on wide
+   monitors without dominating the layout. */
 .figure {
-    margin: 1.25rem 0;
-    max-width: 100%;
+    margin: 1.25rem auto;
+    max-width: 700px;
 }
 .figure img {
     display: block;
