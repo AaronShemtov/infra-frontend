@@ -500,11 +500,11 @@ body {
 }
 
 /* ---------- Figures with embedded screenshots ----------
-   Matched to diagram width (640px) so screenshots and SVG diagrams
-   read as a consistent visual scale across the page. */
+   Slightly wider than diagrams so screenshots align with the text
+   width inside experience-body. */
 .figure {
     margin: 1.25rem auto;
-    max-width: 640px;
+    max-width: 100%;
 }
 .figure img {
     display: block;
