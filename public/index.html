@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Infrastructure Walkthrough — 1ms.my</title>
-    <meta name="description" content="Architecture walkthrough of the platform behind 1ms.my, cv.1ms.my and infra.1ms.my — Oracle Cloud, OKE, Flux GitOps, Cloudflare Tunnel, ESO + Vault.">
+    <title>Platform Architecture — 1ms.my</title>
+    <meta name="description" content="Platform architecture and operations for the demonstration project behind 1ms.my, cv.1ms.my and infra.1ms.my — Oracle Cloud, OKE, Flux GitOps, Cloudflare, ESO + Vault.">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="stylesheet" href="/styles.css">
 </head>
@@ -27,10 +27,11 @@
     </button>
 
     <main class="container">
+
         <!-- HEADER -->
         <header class="header">
-            <h1 class="name">Infrastructure Walkthrough</h1>
-            <p class="title">The platform behind 1ms.my, cv.1ms.my and this page</p>
+            <h1 class="name">Platform Architecture</h1>
+            <p class="title">The Kubernetes platform behind 1ms.my, cv.1ms.my and this page</p>
             <ul class="contacts">
                 <li><a href="https://1ms.my">1ms.my</a></li>
                 <li><a href="https://cv.1ms.my">cv.1ms.my</a></li>
@@ -38,19 +39,112 @@
             </ul>
         </header>
 
-        <!-- INTRO PARAGRAPH -->
+        <!-- INTRO -->
         <section class="section">
-            <p>This page documents the production-grade Kubernetes platform that serves <strong>1ms.my</strong> (URL shortener), <strong>cv.1ms.my</strong> (CV), and the page you're reading now (<strong>infra.1ms.my</strong>). The whole stack runs on Oracle Cloud Always Free tier at €0/month and is operated entirely through GitOps from public GitHub repositories — no manual <code>kubectl apply</code> against the cluster.</p>
-            <p>It exists to mirror real-world DevOps practice: multi-app Kubernetes platform, automated image promotion, secrets sourced from a managed vault, no public load balancer, no static credentials, no kubeconfig drift.</p>
+            <p>This page describes a <strong>demonstration project</strong> I built and operate end-to-end. Because day-to-day client work is covered by NDA, I created this platform as a transparent reference of the practices I apply professionally — multi-tenant Kubernetes, GitOps with automated image promotion, declarative ingress, managed-vault-sourced secrets, and zero static credentials.</p>
+            <p>The platform hosts three production sites:</p>
+            <ul>
+                <li><strong>1ms.my</strong> — a URL shortener (Go backend, nginx frontend).</li>
+                <li><strong>cv.1ms.my</strong> — my CV with downloadable PDF.</li>
+                <li><strong>infra.1ms.my</strong> — the page you are reading.</li>
+            </ul>
+            <p>Everything below is operated entirely through GitOps from public GitHub repositories. There is no manual <code>kubectl apply</code> against the cluster — every change in the cluster is the result of a Git commit. The repository layout is intentionally split across multiple small repositories, each with its own CI/CD pipeline, to model the structure of a real microservices platform.</p>
         </section>
 
-        <!-- SECTIONS — each is a collapsible block with the same UX as the CV page.
-             To add or edit a section: copy any <article class="experience expanded">
-             block and change the header + body content. Initial state is expanded. -->
+        <!-- ARCHITECTURE DIAGRAM -->
+        <section class="section">
+            <h2>Architecture at a glance</h2>
+            <p>Request flow from a user's browser down to the application pods and the managed database:</p>
+            <div class="diagram-wrap">
+                <svg class="diagram" viewBox="0 0 760 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Application architecture diagram">
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" class="arrow-head" />
+                        </marker>
+                    </defs>
 
+                    <!-- Internet -->
+                    <rect x="280" y="20" width="200" height="50" rx="6" class="diagram-box-edge" />
+                    <text x="380" y="50" class="diagram-text-edge" text-anchor="middle">Internet (User)</text>
+                    <line x1="380" y1="70" x2="380" y2="100" class="diagram-arrow" marker-end="url(#arrow)" />
+                    <text x="395" y="90" class="diagram-label">HTTPS</text>
+
+                    <!-- Cloudflare -->
+                    <rect x="220" y="105" width="320" height="65" rx="6" class="diagram-box-edge" />
+                    <text x="380" y="130" class="diagram-text-edge" text-anchor="middle" font-weight="600">Cloudflare Edge</text>
+                    <text x="380" y="152" class="diagram-text-edge-small" text-anchor="middle">TLS · DDoS · CDN · DNS proxy</text>
+                    <line x1="380" y1="170" x2="380" y2="210" class="diagram-arrow" marker-end="url(#arrow)" />
+                    <text x="395" y="195" class="diagram-label">Cloudflare Tunnel (outbound TLS)</text>
+
+                    <!-- Cluster boundary -->
+                    <rect x="30" y="220" width="700" height="500" rx="8" class="diagram-cluster" />
+                    <text x="50" y="245" class="diagram-cluster-label">OKE cluster · il-jerusalem-1</text>
+
+                    <!-- cloudflared -->
+                    <rect x="280" y="260" width="200" height="55" rx="6" class="diagram-box" />
+                    <text x="380" y="283" class="diagram-text" text-anchor="middle" font-weight="600">cloudflared × 2</text>
+                    <text x="380" y="302" class="diagram-text-small" text-anchor="middle">ns: cloudflare</text>
+                    <line x1="380" y1="315" x2="380" y2="345" class="diagram-arrow" marker-end="url(#arrow)" />
+
+                    <!-- Envoy Gateway -->
+                    <rect x="220" y="350" width="320" height="65" rx="6" class="diagram-box-accent" />
+                    <text x="380" y="375" class="diagram-text" text-anchor="middle" font-weight="600">Envoy Gateway</text>
+                    <text x="380" y="397" class="diagram-text-small" text-anchor="middle">Gateway API v1.2.0 · ClusterIP · hostname routing</text>
+
+                    <!-- Three lines to namespaces -->
+                    <line x1="160" y1="415" x2="160" y2="460" class="diagram-arrow" marker-end="url(#arrow)" />
+                    <line x1="380" y1="415" x2="380" y2="460" class="diagram-arrow" marker-end="url(#arrow)" />
+                    <line x1="600" y1="415" x2="600" y2="460" class="diagram-arrow" marker-end="url(#arrow)" />
+                    <text x="160" y="438" class="diagram-label" text-anchor="middle">1ms.my</text>
+                    <text x="380" y="438" class="diagram-label" text-anchor="middle">cv.1ms.my</text>
+                    <text x="600" y="438" class="diagram-label" text-anchor="middle">infra.1ms.my</text>
+                    <path d="M380,415 L160,440" class="diagram-arrow-light" />
+                    <path d="M380,415 L600,440" class="diagram-arrow-light" />
+
+                    <!-- urlshortener namespace -->
+                    <rect x="50" y="465" width="220" height="190" rx="6" class="diagram-ns" />
+                    <text x="160" y="487" class="diagram-text" text-anchor="middle" font-weight="600">ns: urlshortener</text>
+                    <rect x="65" y="500" width="190" height="42" rx="4" class="diagram-box-inner" />
+                    <text x="160" y="520" class="diagram-text-small" text-anchor="middle" font-weight="600">writer × 2</text>
+                    <text x="160" y="535" class="diagram-text-xsmall" text-anchor="middle">POST /shorten · /createcustom</text>
+                    <rect x="65" y="548" width="190" height="42" rx="4" class="diagram-box-inner" />
+                    <text x="160" y="568" class="diagram-text-small" text-anchor="middle" font-weight="600">reader × 2</text>
+                    <text x="160" y="583" class="diagram-text-xsmall" text-anchor="middle">GET /{code} · scales independently</text>
+                    <rect x="65" y="596" width="190" height="42" rx="4" class="diagram-box-inner" />
+                    <text x="160" y="616" class="diagram-text-small" text-anchor="middle" font-weight="600">frontend × 2</text>
+                    <text x="160" y="631" class="diagram-text-xsmall" text-anchor="middle">nginx · static HTML form</text>
+
+                    <!-- cv namespace -->
+                    <rect x="290" y="465" width="180" height="100" rx="6" class="diagram-ns" />
+                    <text x="380" y="487" class="diagram-text" text-anchor="middle" font-weight="600">ns: cv</text>
+                    <rect x="305" y="500" width="150" height="42" rx="4" class="diagram-box-inner" />
+                    <text x="380" y="520" class="diagram-text-small" text-anchor="middle" font-weight="600">cv-frontend × 2</text>
+                    <text x="380" y="535" class="diagram-text-xsmall" text-anchor="middle">static CV page</text>
+
+                    <!-- infra namespace -->
+                    <rect x="490" y="465" width="220" height="100" rx="6" class="diagram-ns" />
+                    <text x="600" y="487" class="diagram-text" text-anchor="middle" font-weight="600">ns: infra</text>
+                    <rect x="505" y="500" width="190" height="42" rx="4" class="diagram-box-inner" />
+                    <text x="600" y="520" class="diagram-text-small" text-anchor="middle" font-weight="600">infra-frontend × 2</text>
+                    <text x="600" y="535" class="diagram-text-xsmall" text-anchor="middle">this page</text>
+
+                    <!-- Lines from writer/reader to ADB -->
+                    <line x1="100" y1="655" x2="100" y2="780" class="diagram-arrow" marker-end="url(#arrow)" />
+                    <line x1="220" y1="655" x2="220" y2="780" class="diagram-arrow" marker-end="url(#arrow)" />
+                    <text x="245" y="700" class="diagram-label">SODA REST · HTTPS</text>
+
+                    <!-- ADB -->
+                    <rect x="40" y="790" width="240" height="65" rx="6" class="diagram-box-edge" />
+                    <text x="160" y="815" class="diagram-text-edge" text-anchor="middle" font-weight="600">Autonomous JSON Database</text>
+                    <text x="160" y="836" class="diagram-text-edge-small" text-anchor="middle">OCI managed · same region</text>
+                </svg>
+            </div>
+        </section>
+
+        <!-- COLLAPSIBLE SECTIONS -->
         <section class="section">
             <div class="section-header">
-                <h2>Architecture</h2>
+                <h2>Detailed walkthrough</h2>
                 <button class="bulk-toggle" id="bulk-toggle" type="button">Collapse all</button>
             </div>
 
@@ -58,21 +152,21 @@
             <article class="experience expanded">
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
-                        <h3>Cloud platform — Oracle Cloud (OCI)</h3>
-                        <p class="company">Region: il-jerusalem-1 · Always Free tier</p>
+                        <h3>Cloud platform — Oracle Cloud Infrastructure</h3>
+                        <p class="company">Region: il-jerusalem-1</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p>The whole platform runs in OCI region <strong>Israel Central (Jerusalem)</strong> — the home region of the tenancy. Always Free quotas cover everything currently deployed. Storage in OCIR is technically pay-per-GB, but on this scale rounds to ~€0.01/month.</p>
+                    <p>The entire platform runs on <strong>Oracle Cloud Infrastructure (OCI)</strong> in the <code>il-jerusalem-1</code> region. The services in active use:</p>
                     <ul>
-                        <li><strong>Compute</strong> — 4 OCPU + 24 GB RAM Ampere A1 (Arm), fully allocated to the OKE worker pool.</li>
-                        <li><strong>Block Volume</strong> — 200 GB total Always Free; currently consumed by three node boot volumes (~47 GB each).</li>
-                        <li><strong>Container Engine (OKE)</strong> — managed Kubernetes control plane; the cluster itself is free, only the worker nodes count against compute quota.</li>
-                        <li><strong>Container Registry (OCIR)</strong> — private repos for backend, frontend, cv, infra images.</li>
-                        <li><strong>Vault + Secrets</strong> — master encryption keys (software) + tenancy secrets, sourced by ESO into Kubernetes Secrets at runtime.</li>
-                        <li><strong>Autonomous Database</strong> — JSON workload type, 1 ECPU + 20 GB, SODA REST API endpoint.</li>
-                        <li><strong>Identity</strong> — Dynamic Groups + Policies grant OKE worker node identities access to Vault secrets and ADB without any static credentials.</li>
+                        <li><strong>Compute (Ampere A1)</strong> — Arm-based virtual machines allocated as the OKE worker pool.</li>
+                        <li><strong>Container Engine for Kubernetes (OKE)</strong> — managed Kubernetes control plane.</li>
+                        <li><strong>Block Volume</strong> — boot volumes for worker nodes; later, persistent volumes for the observability stack.</li>
+                        <li><strong>Container Registry (OCIR)</strong> — private repositories for every application image.</li>
+                        <li><strong>Vault</strong> — master encryption keys and tenancy-managed secrets. Source of truth for all runtime credentials.</li>
+                        <li><strong>Autonomous Database (JSON workload)</strong> — managed document store accessed over SODA REST.</li>
+                        <li><strong>IAM (Dynamic Groups + Policies)</strong> — grants the OKE worker node identity scoped access to Vault secrets and the database, eliminating static cloud credentials.</li>
                     </ul>
                 </div>
             </article>
@@ -87,14 +181,19 @@
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p>Three worker nodes, intentionally uneven in shape:</p>
+                    <p>The cluster has three worker nodes, intentionally heterogeneous in capacity:</p>
                     <ul>
-                        <li><strong><code>10.0.1.37</code></strong> — 1 OCPU / 6 GB RAM — application pods (writer / reader / frontends / cloudflared).</li>
-                        <li><strong><code>10.0.1.66</code></strong> — 1 OCPU / 6 GB RAM — sister node to <code>.37</code>; pod anti-affinity spreads replicas across them for HA during rolling updates.</li>
-                        <li><strong><code>10.0.1.135</code></strong> — 2 OCPU / 12 GB RAM — reserved for the observability stack (Prometheus / Grafana / Loki). Currently underused; will host the monitoring HelmReleases when that work lands.</li>
+                        <li><strong><code>10.0.1.37</code></strong> — 1 OCPU / 6 GB RAM — application workloads.</li>
+                        <li><strong><code>10.0.1.66</code></strong> — 1 OCPU / 6 GB RAM — application workloads, paired with <code>.37</code> through pod anti-affinity for HA during rolling updates.</li>
+                        <li><strong><code>10.0.1.135</code></strong> — 2 OCPU / 12 GB RAM — reserved for the observability stack (Prometheus, Grafana, Loki), which will be deployed in a future iteration.</li>
                     </ul>
-                    <p>The split exists because the Ampere A1 Always Free pool is 4 OCPU + 24 GB <em>total</em>. A 2+1+1 split gives one "fat" node for observability (memory-heavy) while keeping two lighter app nodes whose loss is absorbed by anti-affinity-spread replicas.</p>
-                    <p><strong>Security baseline</strong>: every namespace enforces the <code>restricted</code> PodSecurityStandard — non-root, no host networking, dropped capabilities, RuntimeDefault seccomp profile, read-only root filesystem where the workload allows.</p>
+                    <p>The asymmetric split provides one larger node sized for memory-heavy observability workloads while keeping two smaller application nodes whose loss is absorbed by anti-affinity-spread replicas.</p>
+                    <p>The <strong>restricted</strong> Pod Security Standard is enforced per namespace. All workloads run as non-root, drop all Linux capabilities, use the <code>RuntimeDefault</code> seccomp profile, and mount a read-only root filesystem where the application permits.</p>
+                    <p>Below is a live view of the three nodes from k9s:</p>
+                    <figure class="figure">
+                        <img src="/img/nodes.png" alt="k9s screenshot showing three OKE worker nodes with CPU, memory and pod allocations" loading="lazy">
+                        <figcaption>OKE worker nodes — version, pod count, CPU and memory usage.</figcaption>
+                    </figure>
                 </div>
             </article>
 
@@ -102,21 +201,20 @@
             <article class="experience expanded">
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
-                        <h3>Networking &amp; Ingress</h3>
-                        <p class="company">Envoy Gateway (Gateway API) · ClusterIP service · no public LB</p>
+                        <h3>Networking and ingress</h3>
+                        <p class="company">Envoy Gateway · Kubernetes Gateway API · ClusterIP only</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p>There is no public OCI Load Balancer. The single Always Free LB slot is reserved; the cluster has no public IP and no inbound firewall holes.</p>
-                    <p><strong>Envoy Gateway 1.x</strong> runs the data plane, configured with an <code>EnvoyProxy</code> CR that pins the Envoy Service to <code>ClusterIP</code> (overriding Envoy Gateway's default <code>LoadBalancer</code> behavior). A single <code>Gateway</code> resource has one HTTP listener on port 80; <code>allowedRoutes.namespaces.from: All</code> lets HTTPRoutes from any application namespace attach without ReferenceGrants.</p>
-                    <p>Routing is hostname-based — one HTTPRoute per site:</p>
+                    <p>The cluster has no public IP address and no inbound firewall openings. There is no public load balancer attached to any Service. All ingress is delivered through outbound Cloudflare Tunnel connections — see the Cloudflare section.</p>
+                    <p>Inside the cluster, <strong>Envoy Gateway 1.x</strong> implements the standard Kubernetes Gateway API (v1.2.0). An <code>EnvoyProxy</code> custom resource explicitly pins the data-plane Service type to <code>ClusterIP</code>, overriding the default <code>LoadBalancer</code> behaviour. A single <code>Gateway</code> resource exposes one HTTP listener on port 80; <code>allowedRoutes.namespaces.from: All</code> permits <code>HTTPRoute</code> resources from any application namespace to attach without ReferenceGrants.</p>
+                    <p>Hostname-based routing:</p>
                     <ul>
-                        <li><code>1ms.my</code> → urlshortener namespace (writer / reader / frontend by path)</li>
-                        <li><code>cv.1ms.my</code> → cv namespace (cv-frontend)</li>
-                        <li><code>infra.1ms.my</code> → infra namespace (this page)</li>
+                        <li><code>1ms.my</code> → <code>urlshortener</code> namespace (writer, reader, frontend Services selected by path)</li>
+                        <li><code>cv.1ms.my</code> → <code>cv</code> namespace (<code>cv-frontend</code>)</li>
+                        <li><code>infra.1ms.my</code> → <code>infra</code> namespace (this page)</li>
                     </ul>
-                    <p>External traffic reaches Envoy via Cloudflare Tunnel — see the next section.</p>
                 </div>
             </article>
 
@@ -124,19 +222,24 @@
             <article class="experience expanded">
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
-                        <h3>Cloudflare — Registrar, DNS, Tunnel, Proxy</h3>
-                        <p class="company">homelab-tunnel · 4 cloudflared connectors · orange-cloud proxied</p>
+                        <h3>DNS, edge and tunnel — Cloudflare</h3>
+                        <p class="company">Domain on Dynadot · DNS &amp; proxy on Cloudflare · 4 tunnel connectors</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
                     <ul>
-                        <li><strong>Registrar</strong> — the <code>1ms.my</code> domain is registered through Cloudflare Registrar (at-cost renewal, no separate registrar bill).</li>
-                        <li><strong>DNS</strong> — zone <code>1ms.my</code> hosted on Cloudflare. Records for <code>1ms.my</code>, <code>cv.1ms.my</code> and <code>infra.1ms.my</code> are CNAMEs pointing at the homelab tunnel; Cloudflare creates these automatically when public hostnames are added to the tunnel.</li>
-                        <li><strong>Proxied (orange cloud)</strong> — all traffic terminates TLS at Cloudflare's edge. That gives free TLS certs (auto-renewed), DDoS protection, edge caching of static assets (CSS, JS, images, PDFs), and analytics.</li>
-                        <li><strong>Cloudflare Tunnel</strong> — <code>cloudflared</code> Deployment with 2 replicas inside the cluster establishes outbound TLS connections to Cloudflare's edge. No inbound ports open on OCI; the cluster has no public IP. The tunnel is HEALTHY with 4 connectors across Tel Aviv and Marseille edge POPs.</li>
-                        <li><strong>Public hostnames</strong> in the tunnel route each site to the Envoy data-plane Service via in-cluster DNS over HTTPS (No TLS Verify because Envoy serves a self-signed internal cert).</li>
+                        <li><strong>Registrar</strong> — the <code>1ms.my</code> domain is registered with <strong>Dynadot</strong>. The Dynadot domain has its nameservers delegated to Cloudflare, so Cloudflare hosts the authoritative DNS zone.</li>
+                        <li><strong>DNS</strong> — zone <code>1ms.my</code> on Cloudflare. Each subdomain (apex, <code>cv</code>, <code>infra</code>) is a CNAME pointing at the homelab tunnel. Cloudflare creates these records automatically when public hostnames are added to the tunnel.</li>
+                        <li><strong>Proxy (orange-cloud)</strong> — all traffic terminates TLS at Cloudflare's edge. This provides automatic TLS certificates, DDoS protection, edge caching of static assets, and HTTP analytics.</li>
+                        <li><strong>Cloudflare Tunnel</strong> — <code>cloudflared</code> runs as a 2-replica Deployment inside the cluster and establishes outbound TLS connections to Cloudflare's edge. The tunnel currently reports HEALTHY with 4 connectors across Tel Aviv and Marseille edge POPs.</li>
+                        <li><strong>Tunnel hostnames</strong> route each domain to the in-cluster Envoy data-plane Service over HTTP. The cluster never accepts unsolicited inbound traffic from the public internet.</li>
                     </ul>
+                    <p>The DNS zone configuration:</p>
+                    <figure class="figure">
+                        <img src="/img/cloudflare-dns.png" alt="Cloudflare DNS Records for 1ms.my showing apex, cv and infra CNAMEs proxied through Cloudflare" loading="lazy">
+                        <figcaption>Cloudflare DNS Records for <code>1ms.my</code> — all proxied (orange-cloud).</figcaption>
+                    </figure>
                 </div>
             </article>
 
@@ -144,50 +247,106 @@
             <article class="experience expanded">
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
-                        <h3>GitOps with Flux</h3>
+                        <h3>GitOps — Flux</h3>
                         <p class="company">Flux v2.6.4 · 6 controllers · Image Automation closes the loop</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p>Six Flux controllers in the <code>flux-system</code> namespace: source-controller, kustomize-controller, helm-controller, notification-controller, image-reflector-controller, image-automation-controller.</p>
-                    <p>Two root Kustomizations split the cluster into a base infrastructure layer and an application layer:</p>
+                    <p>The cluster's desired state is declared entirely in the <a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener"><strong>AaronShemtov/personal-k8s</strong></a> repository. Flux reconciles the cluster against this repository every minute. The repository is the single source of truth — there is no production change that is not first a Git commit.</p>
+                    <p>Six Flux controllers run in the <code>flux-system</code> namespace:</p>
                     <ul>
-                        <li><code>infrastructure</code> — applies <code>./infrastructure/</code> (Gateway API CRDs, Envoy Gateway, External Secrets Operator, cloudflared, image-automation pipeline, metrics-server).</li>
-                        <li><code>applications</code> — applies <code>./applications/</code> (urlshortener, cv, infra). Depends on <code>infrastructure</code> being reconciled first.</li>
+                        <li><code>source-controller</code> — pulls Git, OCI and Helm sources.</li>
+                        <li><code>kustomize-controller</code> — applies Kustomize overlays.</li>
+                        <li><code>helm-controller</code> — reconciles HelmReleases.</li>
+                        <li><code>notification-controller</code> — emits alerts and receives webhooks.</li>
+                        <li><code>image-reflector-controller</code> — scans container registries for new tags.</li>
+                        <li><code>image-automation-controller</code> — commits image tag updates back to Git.</li>
                     </ul>
-                    <p>The Git source uses SSH with a write-enabled deploy key — the same key Flux uses to <em>pull</em> manifests is reused to <em>push</em> tag updates from Image Automation. No personal access tokens, no expiration.</p>
-                    <p><strong>Image Automation loop</strong>:</p>
-                    <ol>
-                        <li>Push to <code>urlshortener-backend</code> (or any source repo) → GitHub Actions builds image, tags <code>:0.0.&lt;run_number&gt;</code> + <code>:&lt;sha&gt;</code> + <code>:latest</code>, pushes to OCIR.</li>
-                        <li><code>ImageRepository</code> scans OCIR every 2 minutes.</li>
-                        <li><code>ImagePolicy</code> picks the highest tag matching semver range <code>&gt;=0.0.0</code>.</li>
-                        <li><code>ImageUpdateAutomation</code> finds Deployment YAMLs containing the marker <code># {"$imagepolicy": "flux-system:&lt;policy&gt;"}</code>, edits the tag, commits to <code>personal-k8s</code> as the "Flux Image Automation" author.</li>
-                        <li>kustomize-controller picks up the new commit, applies; rolling update kicks in.</li>
-                    </ol>
-                    <p>End-to-end: <code>git push</code> in a service repo → new pods running ≈3 minutes later, with no manual intervention.</p>
+                    <p>Two root Kustomizations layer the cluster:</p>
+                    <ul>
+                        <li><code>infrastructure</code> — applies everything under <code>./infrastructure/</code> (Gateway API CRDs, Envoy Gateway, External Secrets Operator, cloudflared, image-automation, metrics-server).</li>
+                        <li><code>applications</code> — applies everything under <code>./applications/</code> (urlshortener, cv, infra). Depends on <code>infrastructure</code> being reconciled first.</li>
+                    </ul>
+                    <p>The Git connection uses SSH with a write-enabled deploy key. The same key Flux uses to <em>pull</em> manifests is reused to <em>push</em> image tag updates produced by the Image Automation pipeline.</p>
                 </div>
             </article>
 
-            <!-- 6. CI/CD -->
+            <!-- 6. CI/CD with diagram -->
             <article class="experience expanded">
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
-                        <h3>CI/CD &amp; Container Registry</h3>
-                        <p class="company">GitHub Actions · OCIR · linux/arm64 only</p>
+                        <h3>CI/CD pipeline — closed-loop GitOps</h3>
+                        <p class="company">GitHub Actions → OCIR → Flux Image Automation → cluster</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p>Each source repo has its own GitHub Actions workflow:</p>
-                    <ul>
-                        <li><code>actions/checkout@v4</code></li>
-                        <li><code>docker/setup-qemu-action</code> + <code>docker/setup-buildx-action</code> — Buildx for cross-arch builds.</li>
-                        <li><code>docker/login-action</code> with OCIR token stored in <code>OCIR_AUTH_TOKEN</code> repo secret.</li>
-                        <li><code>docker/build-push-action@v6</code> with <code>cache-from</code>/<code>cache-to: type=gha</code> for layer reuse.</li>
-                    </ul>
-                    <p>Builds target <strong>linux/arm64 only</strong> — matches the Ampere A1 node arch, avoids slow QEMU emulation when pulling. The build itself runs natively on amd64 (Buildx <code>--platform=$BUILDPLATFORM</code>), only the binary is cross-compiled.</p>
-                    <p><strong>Why GitHub Actions and not OCI DevOps?</strong> OCI DevOps service is free, but its build runners consume OCPU hours against the same Ampere A1 pool that's already 100% allocated to OKE. GitHub Actions is unlimited free for public repos.</p>
+                    <p>A push to any service repository propagates to running pods automatically. The diagram below shows the full loop:</p>
+                    <div class="diagram-wrap">
+                        <svg class="diagram" viewBox="0 0 760 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CI/CD GitOps loop diagram">
+                            <defs>
+                                <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                                    <path d="M0,0 L0,6 L9,3 z" class="arrow-head" />
+                                </marker>
+                            </defs>
+
+                            <rect x="280" y="15" width="200" height="50" rx="6" class="diagram-box-edge" />
+                            <text x="380" y="45" class="diagram-text-edge" text-anchor="middle" font-weight="600">Developer</text>
+                            <line x1="380" y1="65" x2="380" y2="105" class="diagram-arrow" marker-end="url(#arrow2)" />
+                            <text x="395" y="90" class="diagram-label">git push</text>
+
+                            <rect x="180" y="110" width="400" height="65" rx="6" class="diagram-box" />
+                            <text x="380" y="135" class="diagram-text" text-anchor="middle" font-weight="600">Service repository</text>
+                            <text x="380" y="157" class="diagram-text-small" text-anchor="middle">urlshortener-backend · urlshortener-frontend</text>
+                            <text x="380" y="172" class="diagram-text-small" text-anchor="middle">cv-frontend · infra-frontend</text>
+                            <line x1="380" y1="175" x2="380" y2="215" class="diagram-arrow" marker-end="url(#arrow2)" />
+                            <text x="395" y="200" class="diagram-label">workflow trigger</text>
+
+                            <rect x="180" y="220" width="400" height="80" rx="6" class="diagram-box-accent" />
+                            <text x="380" y="245" class="diagram-text" text-anchor="middle" font-weight="600">GitHub Actions</text>
+                            <text x="380" y="267" class="diagram-text-small" text-anchor="middle">build linux/arm64 multi-tag image</text>
+                            <text x="380" y="287" class="diagram-text-xsmall" text-anchor="middle">tags: 0.0.&lt;run_number&gt; · &lt;short-sha&gt; · latest</text>
+                            <line x1="380" y1="300" x2="380" y2="340" class="diagram-arrow" marker-end="url(#arrow2)" />
+                            <text x="395" y="325" class="diagram-label">docker push</text>
+
+                            <rect x="220" y="345" width="320" height="60" rx="6" class="diagram-box" />
+                            <text x="380" y="370" class="diagram-text" text-anchor="middle" font-weight="600">OCIR</text>
+                            <text x="380" y="392" class="diagram-text-small" text-anchor="middle">il-jerusalem-1.ocir.io</text>
+                            <line x1="380" y1="405" x2="380" y2="450" class="diagram-arrow" marker-end="url(#arrow2)" />
+                            <text x="395" y="430" class="diagram-label">scan every 2 min</text>
+
+                            <rect x="120" y="455" width="520" height="105" rx="6" class="diagram-box" />
+                            <text x="380" y="480" class="diagram-text" text-anchor="middle" font-weight="600">Flux Image Automation</text>
+                            <text x="380" y="502" class="diagram-text-small" text-anchor="middle">ImageRepository → scans OCIR</text>
+                            <text x="380" y="520" class="diagram-text-small" text-anchor="middle">ImagePolicy → selects highest semver tag</text>
+                            <text x="380" y="540" class="diagram-text-small" text-anchor="middle">ImageUpdateAutomation → commits update</text>
+                            <line x1="380" y1="560" x2="380" y2="605" class="diagram-arrow" marker-end="url(#arrow2)" />
+                            <text x="395" y="585" class="diagram-label">commit via SSH</text>
+
+                            <rect x="180" y="610" width="400" height="65" rx="6" class="diagram-box-accent" />
+                            <text x="380" y="635" class="diagram-text" text-anchor="middle" font-weight="600">personal-k8s repository</text>
+                            <text x="380" y="657" class="diagram-text-small" text-anchor="middle">GitOps source of truth · auto-commit by Flux</text>
+                            <line x1="380" y1="675" x2="380" y2="715" class="diagram-arrow" marker-end="url(#arrow2)" />
+                            <text x="395" y="700" class="diagram-label">poll every 1 min</text>
+
+                            <rect x="120" y="720" width="520" height="80" rx="6" class="diagram-box" />
+                            <text x="380" y="745" class="diagram-text" text-anchor="middle" font-weight="600">Flux on the cluster</text>
+                            <text x="380" y="767" class="diagram-text-small" text-anchor="middle">source-controller pulls · kustomize-controller applies</text>
+                            <text x="380" y="785" class="diagram-text-small" text-anchor="middle">Deployment image tag updated</text>
+                            <line x1="380" y1="800" x2="380" y2="840" class="diagram-arrow" marker-end="url(#arrow2)" />
+                            <text x="395" y="825" class="diagram-label">rolling update</text>
+
+                            <rect x="220" y="845" width="320" height="65" rx="6" class="diagram-box-edge" />
+                            <text x="380" y="870" class="diagram-text-edge" text-anchor="middle" font-weight="600">New pods running</text>
+                            <text x="380" y="892" class="diagram-text-edge-small" text-anchor="middle">≈ 3 minutes after git push</text>
+
+                            <!-- Loop arrow back -->
+                            <path d="M540,880 Q720,880 720,40 Q720,15 480,15" class="diagram-arrow-light" fill="none" />
+                        </svg>
+                    </div>
+                    <p>Why GitHub Actions: it integrates directly with the source repository, provides build caches per repo, and runs at no additional cost on this scale. The OCI Ampere A1 compute pool is fully allocated to the OKE worker nodes, so an in-tenancy CI runner is not an option here.</p>
+                    <p>Builds target <code>linux/arm64</code> only, matching the Ampere A1 worker node architecture. The build itself runs natively on the GitHub-hosted amd64 runner; only the binary is cross-compiled via <code>docker buildx</code>. This avoids QEMU emulation entirely.</p>
                 </div>
             </article>
 
@@ -196,39 +355,38 @@
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
                         <h3>Secrets management</h3>
-                        <p class="company">External Secrets Operator · OCI Vault · Instance Principal auth</p>
+                        <p class="company">External Secrets Operator · OCI Vault · Instance Principal</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p><strong>External Secrets Operator (ESO)</strong> reconciles Kubernetes Secrets from OCI Vault. A single <code>ClusterSecretStore</code> named <code>oci-vault</code> is configured with Instance Principal auth — the OKE worker node identity is granted vault access via OCI Dynamic Group + Policy. No static OCI credentials anywhere.</p>
+                    <p><strong>External Secrets Operator (ESO)</strong> reconciles Kubernetes <code>Secret</code> resources from OCI Vault on a schedule. A single <code>ClusterSecretStore</code> named <code>oci-vault</code> is configured with <strong>Instance Principal</strong> authentication — the OKE worker node identity is granted Vault read access via an OCI Dynamic Group and Policy. No static cloud credentials are stored anywhere in the cluster or in Git.</p>
                     <p>Vault secrets currently in use:</p>
                     <ul>
-                        <li><code>cloudflared-tunnel-token</code> — token for the homelab-tunnel Cloudflare Tunnel.</li>
-                        <li><code>ocir-auth-token</code> — pull credentials for OCIR. Copied as <code>dockerconfigjson</code> Secret into every application namespace (urlshortener, cv, infra, flux-system).</li>
-                        <li><code>adb-admin-password</code> — Autonomous Database ADMIN password, consumed by writer/reader pods as <code>ADB_PASSWORD</code> env var.</li>
+                        <li><code>cloudflared-tunnel-token</code> — the token authorising the Cloudflare Tunnel.</li>
+                        <li><code>ocir-auth-token</code> — pull credentials for OCIR, materialised as a <code>dockerconfigjson</code> Secret in every application namespace.</li>
+                        <li><code>adb-admin-password</code> — Autonomous Database password, consumed by the writer and reader pods as the <code>ADB_PASSWORD</code> environment variable.</li>
                     </ul>
-                    <p>Each application namespace has an <code>ExternalSecret</code> resource that watches its Vault key and reconciles a Kubernetes Secret with <code>refreshInterval: 1h</code>. Vault is the single source of truth — rotate there, ESO propagates. <strong>Zero secrets are ever committed to Git.</strong></p>
+                    <p>Every application namespace contains an <code>ExternalSecret</code> resource referencing the relevant Vault key. Rotation is performed in Vault and propagates within <code>refreshInterval: 1h</code>. No secret material is committed to Git at any point.</p>
                 </div>
             </article>
 
-            <!-- 8. Data Layer -->
+            <!-- 8. Data layer -->
             <article class="experience expanded">
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
-                        <h3>Data layer</h3>
-                        <p class="company">Autonomous JSON Database · SODA REST API over HTTPS</p>
+                        <h3>Data layer — Autonomous JSON Database</h3>
+                        <p class="company">Managed document store · SODA REST API over HTTPS</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p><strong>Oracle Autonomous JSON Database</strong> (workload type: JSON, Always Free, 1 ECPU, 20 GB) hosted in the same region as the cluster. Accessed via the <strong>SODA REST API</strong> — plain HTTPS with Basic Auth — so the Go backend uses only the standard library's <code>net/http</code>. No Oracle client libraries, no mTLS wallet, no CGO; the resulting image stays distroless / static / non-root and ~12 MB compressed.</p>
-                    <p>Schema: <code>ADMIN.urls</code> is a SODA collection with VARCHAR2 client-assigned keys (the short codes). Document shape:</p>
+                    <p>The URL shortener persists its data in an <strong>Oracle Autonomous Database</strong> provisioned with the JSON workload type, in the same region as the cluster. The backend communicates with the database exclusively through the <strong>SODA REST API</strong> — standard HTTPS with HTTP Basic Authentication. The Go service therefore uses only the standard library's <code>net/http</code>; no Oracle client libraries, no mTLS wallet, no CGO. The resulting container image remains distroless, static, and non-root.</p>
+                    <p>The schema is a single SODA collection named <code>urls</code>, with VARCHAR2 client-assigned keys (the short codes). Document shape:</p>
                     <pre><code>{
   "long_url":   "https://...",
-  "created_at": "ISO-8601"
+  "created_at": "ISO-8601 timestamp"
 }</code></pre>
-                    <p>This replaced an earlier OCI NoSQL backend after the NoSQL provisioned-capacity model started incurring small per-month charges in <code>il-jerusalem-1</code> (Always Free NoSQL in this region uses different limits than what was provisioned). Migration was a same-day backend rewrite — storage interface unchanged, only the implementation file swapped.</p>
                 </div>
             </article>
 
@@ -237,103 +395,127 @@
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
                         <h3>Application architecture — URL Shortener</h3>
-                        <p class="company">writer / reader / frontend split · 6 pods total</p>
+                        <p class="company">Writer / reader / frontend split · independent scaling</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p>The shortener is split into three Deployments in the <code>urlshortener</code> namespace, all running the same image with different <code>MODE</code> env vars (writer / reader) or a different image entirely (frontend):</p>
+                    <p>The URL shortener is intentionally split into <strong>three independent Deployments</strong> in the <code>urlshortener</code> namespace. The split is a deliberate design decision aligned with the read/write asymmetry of a real shortener service.</p>
                     <ul>
-                        <li><strong>writer</strong> — 2 replicas, handles <code>POST /shorten</code> and <code>POST /createcustom</code>. Generates short code, writes to ADB via SODA REST PUT.</li>
-                        <li><strong>reader</strong> — 2 replicas, handles <code>GET /{6-char-code}</code>. Reads from ADB, 301 redirects to the long URL.</li>
-                        <li><strong>frontend</strong> — 2 nginx pods, serves the static HTML form and assets.</li>
+                        <li><strong>writer (2 replicas)</strong> — handles <code>POST /shorten</code> and <code>POST /createcustom</code>. Generates the short code, writes the document to the Autonomous Database via SODA REST <code>PUT</code>, and returns the short URL to the caller. Started in <code>MODE=writer</code> via environment variable; the writer image registers only POST handlers.</li>
+                        <li><strong>reader (2 replicas)</strong> — handles <code>GET /{6-char-code}</code>. Reads the document from the database and returns a 301 redirect to the long URL. Started in <code>MODE=reader</code>.</li>
+                        <li><strong>frontend (2 nginx replicas)</strong> — serves the static single-page application that submits requests to the writer endpoint.</li>
                     </ul>
-                    <p>writer/reader split is intentional: real URL shorteners have ~95% read traffic. Splitting them lets the reader scale independently (HPA candidate, eventually with a Redis read-through cache), keeps the writer image footprint minimal, and lets writers be drained for ADB migrations without affecting reads.</p>
-                    <p><strong>Pod budget across the cluster</strong>:</p>
-                    <ul>
-                        <li><code>flux-system</code> — 6 controllers</li>
-                        <li><code>envoy-gateway-system</code> — control plane + Envoy data plane (~3 pods)</li>
-                        <li><code>external-secrets</code> — controller + webhook + cert-controller (~3 pods)</li>
-                        <li><code>cloudflare</code> — cloudflared × 2</li>
-                        <li><code>urlshortener</code> — writer × 2, reader × 2, frontend × 2</li>
-                        <li><code>cv</code> — cv-frontend × 2</li>
-                        <li><code>infra</code> — infra-frontend × 2 (this page)</li>
-                        <li><code>kube-system</code> — metrics-server, CSI/CNI/kube-proxy DaemonSets</li>
-                    </ul>
+                    <p><strong>Why split writer from reader?</strong> A real URL shortener serves orders of magnitude more reads than writes — a single short link can be shared on social media and receive thousands of redirects per second while the write-side load remains effectively unchanged. By running the read path as a separate Deployment, the reader can scale horizontally (Horizontal Pod Autoscaler on CPU or request-rate) without provisioning additional writer capacity. The writer retains its small, predictable footprint. The two paths can also be deployed, drained, and rolled back independently — useful when migrating the storage backend or rolling out cache changes that affect only the read side.</p>
+                    <p><strong>Why the multi-Deployment, multi-namespace, multi-repository layout overall?</strong> The platform is structured to model a <strong>microservices architecture</strong>: each user-facing capability is its own Deployment (often its own namespace and source repository), with its own image, its own CI/CD pipeline, its own resource budget, and its own scaling profile. This mirrors how real production platforms are organised. It also keeps each component small enough to reason about, deploy independently, and operate without cross-component coordination overhead.</p>
                 </div>
             </article>
 
-            <!-- 10. Observability -->
+            <!-- 10. Pod inventory -->
+            <article class="experience expanded">
+                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
+                    <div>
+                        <h3>Cluster pod inventory</h3>
+                        <p class="company">Live view from k9s</p>
+                    </div>
+                    <span class="chevron" aria-hidden="true">▼</span>
+                </header>
+                <div class="experience-body">
+                    <p>The cluster currently runs around 46 pods distributed across the namespaces below. The pod count includes platform components (Flux controllers, Envoy Gateway, External Secrets Operator, Cloudflare Tunnel), node-local DaemonSets (CNI, CSI, kube-proxy, OKE node observability agents), and application workloads.</p>
+                    <p>Application namespaces:</p>
+                    <ul>
+                        <li><code>urlshortener</code> — writer × 2, reader × 2, frontend × 2 (6 pods)</li>
+                        <li><code>cv</code> — cv-frontend × 2</li>
+                        <li><code>infra</code> — infra-frontend × 2</li>
+                    </ul>
+                    <p>Platform namespaces:</p>
+                    <ul>
+                        <li><code>flux-system</code> — 6 Flux controllers</li>
+                        <li><code>envoy-gateway-system</code> — Envoy control plane and data plane</li>
+                        <li><code>external-secrets</code> — ESO controller, webhook, cert-controller</li>
+                        <li><code>cloudflare</code> — cloudflared × 2</li>
+                        <li><code>kube-system</code> — CoreDNS, OCI CSI, OCI VCN CNI, kube-proxy, metrics-server, OKE node observability and problem-detection agents</li>
+                    </ul>
+                    <figure class="figure">
+                        <img src="/img/pods-1.png" alt="k9s screenshot of cluster pods — flux-system, cv, envoy-gateway-system, external-secrets, infra namespaces" loading="lazy">
+                        <figcaption>Cluster pods — Flux, Envoy Gateway, External Secrets, application namespaces (part 1).</figcaption>
+                    </figure>
+                    <figure class="figure">
+                        <img src="/img/pods-2.png" alt="k9s screenshot of cluster pods — kube-system, urlshortener namespace, OKE node agents" loading="lazy">
+                        <figcaption>Cluster pods — kube-system (CoreDNS, CSI, CNI, kube-proxy, OKE agents) and the urlshortener workloads (part 2).</figcaption>
+                    </figure>
+                </div>
+            </article>
+
+            <!-- 11. Observability -->
             <article class="experience expanded">
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
                         <h3>Observability</h3>
-                        <p class="company">To be done · stack designed, not yet deployed</p>
+                        <p class="company">Roadmap — designed, scheduled for the next iteration</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p><strong>To be done.</strong> The 2 OCPU / 12 GB node (<code>10.0.1.135</code>) is reserved for this stack.</p>
-                    <p>Planned components:</p>
+                    <p>A dedicated observability stack is planned and the larger 2 OCPU / 12 GB node (<code>10.0.1.135</code>) is reserved to host it. The intended components:</p>
                     <ul>
-                        <li><strong>Prometheus</strong> via <code>kube-prometheus-stack</code> HelmRelease — scrapes node-exporter, kubelet, Envoy, ESO, Flux controllers and application <code>/metrics</code> endpoints.</li>
-                        <li><strong>Grafana</strong> — dashboards for cluster health, ingress (request rate, p50/p95/p99 latency, error rate), application-level (shortens/sec, redirects/sec).</li>
-                        <li><strong>Loki</strong> — central log aggregation; Promtail or Grafana Alloy as the agent.</li>
-                        <li><strong>Alertmanager</strong> → email via OCI Email Delivery (3000/month free) for paging.</li>
+                        <li><strong>Prometheus</strong> via <code>kube-prometheus-stack</code> — scrapes node-exporter, kubelet, Envoy Gateway, External Secrets Operator, Flux controllers and application <code>/metrics</code> endpoints.</li>
+                        <li><strong>Grafana</strong> — dashboards for cluster health, ingress (request rate, p50/p95/p99 latency, error rate) and application metrics (shortens per second, redirects per second).</li>
+                        <li><strong>Loki</strong> — central log aggregation, with Grafana Alloy as the collection agent.</li>
+                        <li><strong>Alertmanager</strong> — alert routing through OCI Email Delivery.</li>
                     </ul>
-                    <p>Resource budget on the fat node: 50 GB PVC each for Prometheus / Loki, 1 vCPU + 4 GB for Grafana + Alertmanager. Total fits within the 12 GB / 2 OCPU envelope with headroom.</p>
-                    <p>Until the stack is live, observability is <code>kubectl logs</code> + Cloudflare's HTTP analytics + OCI Console for resource-level metrics.</p>
+                    <p>Until the stack is in place, operational visibility is provided through <code>kubectl logs</code>, k9s, Cloudflare's HTTP analytics for edge metrics, and the OCI Console for resource-level monitoring.</p>
                 </div>
             </article>
 
-            <!-- 11. Repositories -->
+            <!-- 12. Repositories -->
             <article class="experience expanded">
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
-                        <h3>Repositories — multi-repo strategy</h3>
-                        <p class="company">5 public repos · one per concern</p>
+                        <h3>Repositories — multi-repository strategy</h3>
+                        <p class="company">Five public repositories · one per concern · modeled on microservices</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
-                    <p>The platform is intentionally split across <strong>multiple public GitHub repos</strong> instead of a single monorepo. Each repo has its own CI/CD pipeline, its own container image, and is rolled out independently by Flux Image Automation. This mirrors how production microservices platforms are organized: service teams own a service repo, deployments are independent, the platform team owns the GitOps cluster repo.</p>
+                    <p>The platform is intentionally split across <strong>five public repositories</strong> rather than a single monorepo. Each repository owns one concern: it has its own CI/CD workflow, its own container image, and is rolled out independently by Flux Image Automation. This structure deliberately models a real microservices platform, where each service team owns a repository and the platform team owns the GitOps cluster repository.</p>
                     <ul>
-                        <li><strong><a href="https://github.com/AaronShemtov/urlshortener-backend" target="_blank" rel="noopener">AaronShemtov/urlshortener-backend</a></strong> — Go service running in writer or reader mode based on env var. SODA REST client, distroless image.</li>
-                        <li><strong><a href="https://github.com/AaronShemtov/urlshortener-frontend" target="_blank" rel="noopener">AaronShemtov/urlshortener-frontend</a></strong> — static HTML / CSS / JS form for shortening links, served by nginx-unprivileged.</li>
-                        <li><strong><a href="https://github.com/AaronShemtov/cv-frontend" target="_blank" rel="noopener">AaronShemtov/cv-frontend</a></strong> — cv.1ms.my, the CV page with collapsible experience blocks and PDF downloads.</li>
-                        <li><strong><a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener">AaronShemtov/infra-frontend</a></strong> — infra.1ms.my, this very page.</li>
-                        <li><strong><a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener">AaronShemtov/personal-k8s</a></strong> — the GitOps source of truth. Contains every Flux Kustomization, HelmRelease, and Kubernetes manifest in the cluster. The only place where the platform's desired state is declared.</li>
+                        <li><strong><a href="https://github.com/AaronShemtov/urlshortener-backend" target="_blank" rel="noopener">AaronShemtov/urlshortener-backend</a></strong> — Go service running in writer or reader mode, selected by environment variable. SODA REST client, distroless image.</li>
+                        <li><strong><a href="https://github.com/AaronShemtov/urlshortener-frontend" target="_blank" rel="noopener">AaronShemtov/urlshortener-frontend</a></strong> — static HTML, CSS and JavaScript form, served by nginx-unprivileged.</li>
+                        <li><strong><a href="https://github.com/AaronShemtov/cv-frontend" target="_blank" rel="noopener">AaronShemtov/cv-frontend</a></strong> — the CV site at cv.1ms.my.</li>
+                        <li><strong><a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener">AaronShemtov/infra-frontend</a></strong> — this page.</li>
+                        <li><strong><a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener">AaronShemtov/personal-k8s</a></strong> — the GitOps source of truth. Contains every Flux Kustomization, HelmRelease and Kubernetes manifest reconciled against the cluster.</li>
                     </ul>
-                    <p>Cost of multi-repo: more places to track, more workflows to maintain. Benefit: real-world structure, independent release cadence per service, image-level versioning, no monolithic CI matrix.</p>
                 </div>
             </article>
 
-            <!-- 12. Design Decisions -->
+            <!-- 13. Design decisions -->
             <article class="experience expanded">
                 <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
                     <div>
-                        <h3>Design decisions — and the alternatives rejected</h3>
-                        <p class="company">Why these choices, not the obvious defaults</p>
+                        <h3>Design decisions</h3>
+                        <p class="company">Why these choices, and the alternatives rejected</p>
                     </div>
                     <span class="chevron" aria-hidden="true">▼</span>
                 </header>
                 <div class="experience-body">
                     <ul>
-                        <li><strong>Cloudflare Tunnel instead of OCI Load Balancer</strong> — preserves the single Always Free LB slot, eliminates inbound public IPs, includes DDoS protection and TLS termination at Cloudflare's edge for free.</li>
-                        <li><strong>Envoy Gateway, not nginx-ingress</strong> — Gateway API is the future of Kubernetes ingress. Envoy supports advanced traffic policies (rate-limit, JWT, ext-auth) natively, no plugin hacks required.</li>
-                        <li><strong>Flux instead of Argo CD</strong> — image automation is first-class (no separate Argo Image Updater needed), simpler operator model, easier multi-tenancy via Kustomization layering.</li>
-                        <li><strong>Multi-repo, not monorepo</strong> — independent CI, image-level versioning, role separation. Cost is more repos to remember; benefit is real-world structure that scales.</li>
-                        <li><strong><code>distroless/static:nonroot</code> for Go services</strong> — ~5 MB final image, no shell, no package manager, no libc. An attacker who gets RCE can't <code>exec</code> into anything useful.</li>
-                        <li><strong><code>nginx-unprivileged</code> for static sites</strong> — runs as UID 101, passes the restricted PodSecurityStandard without tweaks.</li>
-                        <li><strong>ARM64 (Ampere A1) everywhere</strong> — Always Free pool is Arm. Building Arm-native images avoids QEMU emulation at runtime and matches node arch.</li>
-                        <li><strong>ESO + Vault, not <code>kubectl create secret</code> or sealed-secrets</strong> — managed vault, native rotation, IAM audit log, no key material in Git history at any point.</li>
-                        <li><strong>Autonomous JSON DB over self-hosted Postgres in OKE</strong> — keeps PVC quota free for the future observability stack, gives zero-ops backups + monitoring, costs €0 in home region. Postgres-in-cluster would have eaten 50 GB of the 200 GB block volume budget.</li>
-                        <li><strong>Writer/reader split for a URL shortener</strong> — anticipates the 95/5 read/write ratio of real shortener traffic. Trivial to scale reads via HPA later, trivial to add a Redis read-through cache in front of the reader without touching the writer.</li>
-                        <li><strong>SODA REST over Oracle direct DB driver</strong> — Basic Auth over HTTPS works with stdlib <code>net/http</code>. No Oracle client binary, no wallet file mounted into the pod, no CGO breaking the distroless build.</li>
-                        <li><strong>No public OCI LoadBalancer, no public IPs anywhere</strong> — the cluster is reachable only through the outbound Cloudflare Tunnel. Smallest possible attack surface.</li>
+                        <li><strong>Cloudflare Tunnel instead of an OCI Load Balancer</strong> — eliminates inbound public IPs entirely. TLS termination, DDoS protection and edge caching are handled by Cloudflare. The cluster has no exposed ports.</li>
+                        <li><strong>Envoy Gateway over nginx-ingress</strong> — adopts the standardised Kubernetes Gateway API, which supports advanced traffic policies (rate limiting, JWT validation, external authorisation) natively.</li>
+                        <li><strong>Flux over Argo CD</strong> — Image Automation is a first-class capability of Flux, removing the need for a separate Argo Image Updater. The operator model is simple and the Kustomization layering supports multi-tenancy without additional tooling.</li>
+                        <li><strong>Multi-repository, not monorepo</strong> — independent CI/CD, image-level versioning, clear ownership boundaries. Models a real microservices platform.</li>
+                        <li><strong><code>distroless/static:nonroot</code> base for Go services</strong> — final image is small, has no shell, no package manager, no libc, and runs as a non-root user by default. Reduces attack surface and image size simultaneously.</li>
+                        <li><strong><code>nginx-unprivileged</code> for static sites</strong> — runs as UID 101, passes the restricted Pod Security Standard out of the box.</li>
+                        <li><strong>ARM64 (Ampere A1) workloads end-to-end</strong> — matches the worker node architecture, removing QEMU emulation at both build time and runtime.</li>
+                        <li><strong>External Secrets Operator with OCI Vault</strong> — managed vault with native rotation and IAM audit; no secret material is ever committed to Git.</li>
+                        <li><strong>Managed Autonomous Database over in-cluster Postgres</strong> — frees the cluster's block-volume budget for the upcoming observability stack and removes operational burden (backups, upgrades, monitoring).</li>
+                        <li><strong>Writer / reader split for the URL shortener</strong> — aligns with the read-heavy traffic profile and enables independent scaling of the read path.</li>
+                        <li><strong>SODA REST instead of a native Oracle DB driver</strong> — keeps the Go service's container image distroless and CGO-free, with no client library or wallet mount.</li>
+                        <li><strong>No public ingress, no static credentials</strong> — every external connection enters through the outbound Cloudflare Tunnel; every cloud credential is short-lived and scoped via Instance Principal.</li>
                     </ul>
                 </div>
             </article>
+
         </section>
 
         <footer class="footer">
