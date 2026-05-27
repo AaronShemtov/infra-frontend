@@ -26,7 +26,8 @@
         <a href="https://1ms.my/">1ms.my</a>
         <a href="https://cv.1ms.my/">cv</a>
         <a href="https://infra.1ms.my/" class="current">platform</a>
-        <a href="https://pwd.1ms.my/">pwd</a>
+        <a href="https://pwd.1ms.my/">password-generator</a>
+        <a href="https://grafana.1ms.my/">grafana</a>
       </nav>
       <button class="theme-btn" id="theme-btn" aria-label="Toggle theme" title="Toggle theme">
         <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
@@ -92,7 +93,7 @@
           <dt>k8s</dt><dd>v1.32.1</dd>
           <dt>flux</dt><dd>v2.6.4 · 6 controllers</dd>
           <dt>nodes</dt><dd>3 × Ampere A1 <b>ARM64</b></dd>
-          <dt>pods</dt><dd>~46</dd>
+          <dt>pods</dt><dd>~63</dd>
           <dt>app ns</dt><dd>4 tenants</dd>
           <dt>repos</dt><dd>5 public</dd>
           <div class="divider"></div>
@@ -991,17 +992,18 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <span class="acc-tag">PODS</span>
         <div class="acc-titles">
           <h3>Cluster pod inventory</h3>
-          <div class="acc-meta">Live view from k9s · ~46 pods total</div>
+          <div class="acc-meta">Live view from k9s · ~63 pods total</div>
         </div>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>The cluster currently runs around 46 pods distributed across the namespaces below. The pod count includes platform components (Flux controllers, Envoy Gateway, External Secrets Operator, Cloudflare Tunnel), node-local DaemonSets (CNI, CSI, kube-proxy, OKE node observability agents), and application workloads.</p>
+        <p>The cluster currently runs around 63 pods distributed across the namespaces below. The pod count includes platform components (Flux controllers, Envoy Gateway, External Secrets Operator, Cloudflare Tunnel), node-local DaemonSets (CNI, CSI, kube-proxy, OKE node observability agents), and application workloads.</p>
         <p>Application namespaces:</p>
         <ul>
           <li><code>urlshortener</code> — writer × 2, reader × 2, frontend × 2 (6 pods)</li>
           <li><code>cv</code> — cv-frontend × 2</li>
           <li><code>infra</code> — infra-frontend × 2</li>
+          <li><code>pwd</code> — pwd-frontend × 2</li>
         </ul>
         <p>Platform namespaces:</p>
         <ul>
@@ -1009,6 +1011,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
           <li><code>envoy-gateway-system</code> — Envoy control plane and data plane</li>
           <li><code>external-secrets</code> — ESO controller, webhook, cert-controller</li>
           <li><code>cloudflare</code> — cloudflared × 2</li>
+          <li><code>monitoring</code> — Prometheus, Alertmanager, Loki (+ canaries), Grafana, kube-state-metrics, Prometheus Operator, Alloy × 3 (DaemonSet), node-exporter × 3 (DaemonSet) — ~15 pods total</li>
           <li><code>kube-system</code> — CoreDNS, OCI CSI, OCI VCN CNI, kube-proxy, metrics-server, OKE node observability and problem-detection agents</li>
         </ul>
         <figure>
@@ -1041,7 +1044,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
           <li><strong>Alertmanager 0.27</strong> — alert routing. Currently with a no-op receiver; Telegram bot integration is the next iteration.</li>
           <li><strong>Loki 3.2</strong> in SingleBinary mode — log aggregation, filesystem storage on PVC.</li>
           <li><strong>Grafana Alloy 1.5</strong> as a DaemonSet on every node — tails container logs, enriches with Kubernetes metadata, ships to Loki.</li>
-          <li><strong>Grafana 11.2</strong> — visualisation, with two data sources wired (Prometheus + Loki) and ~30 dashboards pre-provisioned (4 hand-built + the full kubernetes-mixin set from kube-prometheus-stack).</li>
+          <li><strong>Grafana 11.3.9</strong> — visualisation, with two data sources wired (Prometheus + Loki) and ~30 dashboards pre-provisioned (4 hand-built + the full kubernetes-mixin set from kube-prometheus-stack).</li>
           <li><strong>node-exporter</strong> DaemonSet for node-level metrics on all three workers.</li>
           <li><strong>kube-state-metrics</strong> for Pod/Deployment/etc state.</li>
         </ul>
@@ -1115,17 +1118,18 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <span class="acc-tag">REPOS</span>
         <div class="acc-titles">
           <h3>Repositories — multi-repository strategy</h3>
-          <div class="acc-meta">Five public repositories · one per concern · modeled on microservices</div>
+          <div class="acc-meta">Six public repositories · one per concern · modeled on microservices</div>
         </div>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>The platform is intentionally split across <strong>five public repositories</strong> rather than a single monorepo. Each repository owns one concern: it has its own CI/CD workflow, its own container image, and is rolled out independently by Flux Image Automation. This structure deliberately models a real microservices platform, where each service team owns a repository and the platform team owns the GitOps cluster repository.</p>
+        <p>The platform is intentionally split across <strong>six public repositories</strong> rather than a single monorepo. Each repository owns one concern: it has its own CI/CD workflow, its own container image, and is rolled out independently by Flux Image Automation. This structure deliberately models a real microservices platform, where each service team owns a repository and the platform team owns the GitOps cluster repository.</p>
         <ul>
           <li><strong><a href="https://github.com/AaronShemtov/urlshortener-backend" target="_blank" rel="noopener">AaronShemtov/urlshortener-backend</a></strong> — Go service running in writer or reader mode, selected by environment variable. SODA REST client, distroless image.</li>
           <li><strong><a href="https://github.com/AaronShemtov/urlshortener-frontend" target="_blank" rel="noopener">AaronShemtov/urlshortener-frontend</a></strong> — static HTML, CSS and JavaScript form, served by nginx-unprivileged.</li>
           <li><strong><a href="https://github.com/AaronShemtov/cv-frontend" target="_blank" rel="noopener">AaronShemtov/cv-frontend</a></strong> — the CV site at cv.1ms.my.</li>
           <li><strong><a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener">AaronShemtov/infra-frontend</a></strong> — this page.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/pwd-frontend" target="_blank" rel="noopener">AaronShemtov/pwd-frontend</a></strong> — the password generator at pwd.1ms.my; client-side cryptographic generation, no backend.</li>
           <li><strong><a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener">AaronShemtov/personal-k8s</a></strong> — the GitOps source of truth. Contains every Flux Kustomization, HelmRelease and Kubernetes manifest reconciled against the cluster.</li>
         </ul>
       </div>
@@ -1272,8 +1276,8 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
       <div class="acc-body">
         <p><strong>Problem.</strong> While rolling out the observability stack I pinned the Grafana image explicitly to make the version predictable. After the next Flux reconcile the Grafana pod was stuck in <code>ImagePullBackOff</code>, and because the <code>infrastructure</code> Kustomization waits for all HelmReleases to be Ready, the whole reconcile loop blocked — including the <code>applications</code> Kustomization that depends on infrastructure.</p>
         <p><strong>Investigation.</strong> <code>kubectl describe pod</code> showed two distinct issues stacked on top of each other. First, the image path read <code>docker.io/docker.io/grafana/grafana</code> — a double prefix. The Grafana Helm chart prepends <code>docker.io/</code> automatically when the repository value doesn't start with a registry, and I'd written <code>docker.io/grafana/grafana</code> in values, producing the duplication. Second, the tag I'd chosen — <code>11.3.0</code> — didn't actually exist on Docker Hub; the chart's default <code>appVersion</code> at the time was <code>11.2.1</code>.</p>
-        <p><strong>Fix.</strong> Two parts. The repository field should be just the path <code>grafana/grafana</code> — let the chart handle the registry prefix. The tag should be a tag that demonstrably exists; the safe move is to drop the explicit pin and inherit the chart's tested <code>appVersion</code>. Once both were corrected and committed, the pod started cleanly and the dependent Kustomizations unblocked.</p>
-        <p><strong>Lesson.</strong> Helm chart version and application <code>appVersion</code> are different release cadences. <code>chart: grafana@8.5.2</code> ships with whatever <code>appVersion</code> the chart maintainer chose — currently <code>11.2.1</code>, not <code>11.3.x</code>. Pinning the chart version is enough for reproducibility; pinning the image tag too is double-pinning, and useful only when there's a concrete reason. And whenever an image tag is being typed by hand, the registry list at <code>hub.docker.com</code> is the source of truth — guessing creates the exact failure I caused.</p>
+        <p><strong>Fix.</strong> Two parts. The repository field should be just the path <code>grafana/grafana</code> — let the chart handle the registry prefix. The tag should be a tag that demonstrably exists. After verifying available tags at <code>hub.docker.com/r/grafana/grafana/tags</code>, I pinned to <code>11.3.9</code> — a real existing patch release of the 11.3 series. Once both were corrected and committed, the pod started cleanly and the dependent Kustomizations unblocked.</p>
+        <p><strong>Lesson.</strong> Helm chart version and application <code>appVersion</code> are different release cadences. <code>chart: grafana@8.5.2</code> ships with whatever <code>appVersion</code> the chart maintainer chose — at the time of writing that was <code>11.2.1</code>. Pinning the chart version is enough for reproducibility; pinning the image tag too is double-pinning, justified when there's a concrete reason (in this case: getting a 11.3.x patch ahead of the chart's update cycle). Whenever an image tag is typed by hand, the registry tag list is the source of truth — guessing creates the exact failure I caused.</p>
       </div>
     </article>
   </section>
@@ -1332,8 +1336,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
 
   <footer class="foot">
     <div>
-      <span class="tag">built · operated · documented · monitored by one person.</span>
-      the same person you'd hire.
+      <span class="tag">built · operated · documented · monitored by <a href="https://cv.1ms.my/" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Aaron Shemtov</a></span>
     </div>
     <div>
       <a href="https://cv.1ms.my/">CV</a> · <a href="https://1ms.my/">1ms.my</a> · <a href="https://github.com/AaronShemtov/infra-frontend">source</a>
