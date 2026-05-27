@@ -13,6 +13,42 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/blueprint.css" />
+<!-- Favicon — the 1ms logo rasterised to multiple sizes. The ICO carries
+     16/32/48 for legacy browsers; modern browsers prefer the PNGs. -->
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<style>
+  /* Inline ribbon extensions — kept here (not in shared blueprint.css)
+     because they're specific to infra.1ms.my and we don't want to
+     repackage all four sites for a navigation-only tweak. */
+
+  /* "1ms.my" with subtitle "link shortener" — the subtitle uses the
+     monospace font in the muted color, stacked under the main label. */
+  .ribbon-nav a > span:first-child { display: block; line-height: 1.1; }
+  .ribbon-sub {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--mute);
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+    margin-top: 1px;
+  }
+
+  /* External-link indicator (↗) next to "grafana" — signals "this opens
+     a new tab and takes you away from the documentation". */
+  .ribbon-ext {
+    margin-left: 4px;
+    color: var(--mute);
+    font-size: 11px;
+    vertical-align: baseline;
+  }
+  .ribbon-nav a:hover .ribbon-ext,
+  .ribbon-nav a:hover .ribbon-sub {
+    color: var(--accent);
+  }
+</style>
 </head>
 <body>
 
@@ -23,11 +59,11 @@
     </div>
     <div style="display:flex; align-items:center; gap:18px;">
       <nav class="ribbon-nav">
-        <a href="https://1ms.my/">1ms.my</a>
+        <a href="https://1ms.my/"><span>1ms.my</span><span class="ribbon-sub">link shortener</span></a>
         <a href="https://cv.1ms.my/">cv</a>
         <a href="https://infra.1ms.my/" class="current">platform</a>
         <a href="https://pwd.1ms.my/">password-generator</a>
-        <a href="https://grafana.1ms.my/">grafana</a>
+        <a href="https://grafana.1ms.my/" target="_blank" rel="noopener"><span>grafana</span><span class="ribbon-ext">↗</span></a>
       </nav>
       <button class="theme-btn" id="theme-btn" aria-label="Toggle theme" title="Toggle theme">
         <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
