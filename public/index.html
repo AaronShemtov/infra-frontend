@@ -303,16 +303,6 @@
             <span class="lbl">ClusterSecretStore — Instance Principal auth into OCI Vault</span>
           </div>
 <pre class="code"><code><span class="c">---</span>
-<span class="c"># Cluster-wide reference to OCI Vault. Any ExternalSecret in any namespace</span>
-<span class="c"># can reference this store via spec.secretStoreRef.</span>
-<span class="c">#</span>
-<span class="c"># Authentication: Instance Principal — ESO controller pod authenticates</span>
-<span class="c"># as the OKE worker node it runs on. The Dynamic Group oke-urlshortener-nodes</span>
-<span class="c"># (matching nodes in compartment &quot;personal&quot;) has policy</span>
-<span class="c"># &quot;use secret-family in compartment personal&quot;, which is sufficient to read</span>
-<span class="c"># any secret in personal-vault.</span>
-<span class="c">#</span>
-<span class="c"># No static credentials, no .pem keys, no secret-of-secrets bootstrap problem.</span>
 <span class="k">apiVersion</span>: external-secrets.io/v1beta1
 <span class="k">kind</span>: ClusterSecretStore
 <span class="k">metadata</span>:
@@ -377,20 +367,7 @@
           <div class="code-head">
             <span class="lbl">Gateway + HTTPRoute (real manifests from personal-k8s)</span>
           </div>
-<pre class="code"><code><span class="c"># infrastructure/envoy-gateway/gateway.yaml</span>
-<span class="c">---</span>
-<span class="c"># Single Gateway for the whole homelab cluster. All apps attach via HTTPRoute.</span>
-<span class="c">#</span>
-<span class="c"># HTTP-only and not HTTPS:</span>
-<span class="c"># Cloudflare terminates TLS at the edge (Universal SSL, free).</span>
-<span class="c"># Cloudflare Tunnel carries plain HTTP from edge → cloudflared pod → here.</span>
-<span class="c"># No reason to do TLS twice; Cloudflare↔origin link is already private</span>
-<span class="c"># (outbound-only tunnel, never exposed to internet).</span>
-<span class="c">#</span>
-<span class="c"># allowedRoutes.namespaces.from: All:</span>
-<span class="c"># each app lives in its own namespace (urlshortener, future cv, portfolio).</span>
-<span class="c"># they all need to attach HTTPRoute to this single Gateway.</span>
-<span class="c"># for tighter security later, switch to &quot;Selector&quot; + label-match.</span>
+<pre class="code"><code><span class="c">---</span>
 <span class="k">apiVersion</span>: gateway.networking.k8s.io/v1
 <span class="k">kind</span>: Gateway
 <span class="k">metadata</span>:
@@ -408,17 +385,7 @@
         <span class="k">kinds</span>:
           - <span class="k">kind</span>: HTTPRoute
 
-<span class="c"># applications/urlshortener/httproute.yaml</span>
 <span class="c">---</span>
-<span class="c"># Routing rules (Gateway API matches by specificity, not array order):</span>
-<span class="c">#   /shorten, /createcustom  → writer service (writer ignores GET via mode flag)</span>
-<span class="c">#   /&lt;6-char base62 code&gt;     → reader service (regex by length excludes longer paths)</span>
-<span class="c">#   /, /*.ico, /*.webp, ...   → frontend service (catch-all)</span>
-<span class="c">#</span>
-<span class="c"># Removed `method: POST` matching because it requires experimental feature flag</span>
-<span class="c"># in Envoy Gateway 1.2.x. Path uniqueness alone is sufficient: frontend nginx</span>
-<span class="c"># doesn&#x27;t serve /shorten or /createcustom, and the 6-char regex won&#x27;t match</span>
-<span class="c"># longer asset paths like /websitebanner.webp.</span>
 <span class="k">apiVersion</span>: gateway.networking.k8s.io/v1
 <span class="k">kind</span>: HTTPRoute
 <span class="k">metadata</span>:
@@ -432,9 +399,6 @@
   <span class="k">hostnames</span>:
     - <span class="s">&quot;1ms.my&quot;</span>
   <span class="k">rules</span>:
-    <span class="c"># Writer endpoints — exact paths, any method.</span>
-    <span class="c"># Writer handler only registers POST, so a stray GET would 404 from the</span>
-    <span class="c"># backend itself, but that&#x27;s fine — same effect as method-level routing.</span>
     - <span class="k">matches</span>:
         - <span class="k">path</span>:
             <span class="k">type</span>: Exact
@@ -446,8 +410,6 @@
         - <span class="k">name</span>: urlshortener-writer
           <span class="k">port</span>: <span class="n">80</span>
 
-    <span class="c"># Reader endpoint — short codes are exactly 6 base62 chars.</span>
-    <span class="c"># The $ anchor prevents matching paths with extensions or longer segments.</span>
     - <span class="k">matches</span>:
         - <span class="k">path</span>:
             <span class="k">type</span>: RegularExpression
@@ -456,7 +418,6 @@
         - <span class="k">name</span>: urlshortener-reader
           <span class="k">port</span>: <span class="n">80</span>
 
-    <span class="c"># Catch-all — frontend serves &quot;/&quot; and static assets.</span>
     - <span class="k">matches</span>:
         - <span class="k">path</span>:
             <span class="k">type</span>: PathPrefix
@@ -495,22 +456,7 @@
           <div class="code-head">
             <span class="lbl">cloudflared — ExternalSecret + Deployment</span>
           </div>
-<pre class="code"><code><span class="c"># infrastructure/cloudflared/externalsecret.yaml</span>
-<span class="c">---</span>
-<span class="c"># Pulls the Cloudflare Tunnel token from OCI Vault and materialises it as a</span>
-<span class="c"># native Kubernetes Secret named &quot;cloudflared-tunnel-token&quot; in this namespace.</span>
-<span class="c">#</span>
-<span class="c"># IMPORTANT: ESO Oracle provider uses the OCI API &quot;GetSecretBundleByName&quot;,</span>
-<span class="c"># so remoteRef.key must be the secret NAME (as shown in OCI Vault console),</span>
-<span class="c"># NOT the OCID. The vault to search is taken from ClusterSecretStore.</span>
-<span class="c">#</span>
-<span class="c"># The cloudflared Deployment (next step) will consume this Secret via:</span>
-<span class="c">#   env:</span>
-<span class="c">#     - name: TUNNEL_TOKEN</span>
-<span class="c">#       valueFrom:</span>
-<span class="c">#         secretKeyRef:</span>
-<span class="c">#           name: cloudflared-tunnel-token</span>
-<span class="c">#           key:  token</span>
+<pre class="code"><code><span class="c">---</span>
 <span class="k">apiVersion</span>: external-secrets.io/v1beta1
 <span class="k">kind</span>: ExternalSecret
 <span class="k">metadata</span>:
@@ -527,20 +473,9 @@
   <span class="k">data</span>:
     - <span class="k">secretKey</span>: token
       <span class="k">remoteRef</span>:
-        <span class="c"># Name of the secret in OCI Vault</span>
         <span class="k">key</span>: cloudflared-tunnel-token
 
-<span class="c"># infrastructure/cloudflared/deployment.yaml</span>
 <span class="c">---</span>
-<span class="c"># cloudflared = the agent that makes the outbound-only connection to</span>
-<span class="c"># Cloudflare edge and proxies inbound traffic back into the cluster.</span>
-<span class="c">#</span>
-<span class="c"># 2 replicas for HA — one can be drained for node maintenance without</span>
-<span class="c"># downtime. They both connect to the SAME tunnel (Cloudflare load-balances</span>
-<span class="c"># automatically across all connected cloudflared instances of one tunnel).</span>
-<span class="c">#</span>
-<span class="c"># TUNNEL_TOKEN comes from the k8s Secret which ESO created from OCI Vault.</span>
-<span class="c"># No token in this manifest, no token in git.</span>
 <span class="k">apiVersion</span>: apps/v1
 <span class="k">kind</span>: Deployment
 <span class="k">metadata</span>:
@@ -563,9 +498,6 @@
       <span class="k">labels</span>:
         <span class="k">app</span>: cloudflared
     <span class="k">spec</span>:
-      <span class="c"># Spread replicas across nodes so a single node failure doesn&#x27;t</span>
-      <span class="c"># take down both connectors. preferredDuringScheduling so it doesn&#x27;t</span>
-      <span class="c"># block scheduling if only one node has capacity.</span>
       <span class="k">affinity</span>:
         <span class="k">podAntiAffinity</span>:
           <span class="k">preferredDuringSchedulingIgnoredDuringExecution</span>:
@@ -594,8 +526,6 @@
             - <span class="k">name</span>: metrics
               <span class="k">containerPort</span>: <span class="n">2000</span>
               <span class="k">protocol</span>: TCP
-          <span class="c"># /ready endpoint is built into cloudflared on the metrics port.</span>
-          <span class="c"># Returns 200 only when at least one tunnel connection is healthy.</span>
           <span class="k">livenessProbe</span>:
             <span class="k">httpGet</span>:
               <span class="k">path</span>: /ready
@@ -658,8 +588,7 @@
           <div class="code-head">
             <span class="lbl">Root Kustomizations (real from personal-k8s)</span>
           </div>
-<pre class="code"><code><span class="c"># infrastructure.yaml — applies ./infrastructure/ first</span>
-<span class="k">apiVersion</span>: kustomize.toolkit.fluxcd.io/v1
+<pre class="code"><code><span class="k">apiVersion</span>: kustomize.toolkit.fluxcd.io/v1
 <span class="k">kind</span>: Kustomization
 <span class="k">metadata</span>:
   <span class="k">name</span>: infrastructure
@@ -674,9 +603,6 @@
   <span class="k">wait</span>: <span class="n">true</span>
   <span class="k">timeout</span>: 5m
 
-
-<span class="c"># applications.yaml — depends on infrastructure</span>
-<span class="c"># applications.yaml</span>
 <span class="k">apiVersion</span>: kustomize.toolkit.fluxcd.io/v1
 <span class="k">kind</span>: Kustomization
 <span class="k">metadata</span>:
@@ -806,12 +732,6 @@
           <span class="k">username</span>: axiwhc5fgu9i/shemtov.aaron@gmail.com
           <span class="k">password</span>: ${{ secrets.OCIR_AUTH_TOKEN }}
 
-      <span class="c"># We tag the image three ways:</span>
-      <span class="c">#   - 0.0.&lt;run_number&gt; — auto-incrementing semver used by Flux ImagePolicy.</span>
-      <span class="c">#     github.run_number monotonically increases per workflow file, so each</span>
-      <span class="c">#     successful build gets a strictly higher version than the previous.</span>
-      <span class="c">#   - &lt;short-sha&gt;       — immutable for traceability / ad-hoc rollback.</span>
-      <span class="c">#   - latest            — convenience for ad-hoc pulls; never used in k8s.</span>
       - <span class="k">name</span>: Resolve image tags
         <span class="k">id</span>: tag
         <span class="k">run</span>: |
@@ -890,8 +810,6 @@
     <span class="k">semver</span>:
       <span class="k">range</span>: <span class="s">&#x27;&gt;=0.0.0&#x27;</span>
 <span class="c">---</span>
-<span class="c"># Simplified commit message template — iterates over Updated.Images as a slice,</span>
-<span class="c"># letting each element stringify itself via the ImageRef.String() method.</span>
 <span class="k">apiVersion</span>: image.toolkit.fluxcd.io/v1beta1
 <span class="k">kind</span>: ImageUpdateAutomation
 <span class="k">metadata</span>:
@@ -948,18 +866,7 @@
           <div class="code-head">
             <span class="lbl">ClusterSecretStore + ExternalSecret (real manifests)</span>
           </div>
-<pre class="code"><code><span class="c"># infrastructure/external-secrets/clustersecretstore.yaml</span>
-<span class="c">---</span>
-<span class="c"># Cluster-wide reference to OCI Vault. Any ExternalSecret in any namespace</span>
-<span class="c"># can reference this store via spec.secretStoreRef.</span>
-<span class="c">#</span>
-<span class="c"># Authentication: Instance Principal — ESO controller pod authenticates</span>
-<span class="c"># as the OKE worker node it runs on. The Dynamic Group oke-urlshortener-nodes</span>
-<span class="c"># (matching nodes in compartment &quot;personal&quot;) has policy</span>
-<span class="c"># &quot;use secret-family in compartment personal&quot;, which is sufficient to read</span>
-<span class="c"># any secret in personal-vault.</span>
-<span class="c">#</span>
-<span class="c"># No static credentials, no .pem keys, no secret-of-secrets bootstrap problem.</span>
+<pre class="code"><code><span class="c">---</span>
 <span class="k">apiVersion</span>: external-secrets.io/v1beta1
 <span class="k">kind</span>: ClusterSecretStore
 <span class="k">metadata</span>:
@@ -971,22 +878,7 @@
       <span class="k">region</span>: il-jerusalem-1
       <span class="k">principalType</span>: InstancePrincipal
 
-<span class="c"># infrastructure/cloudflared/externalsecret.yaml (example consumer)</span>
 <span class="c">---</span>
-<span class="c"># Pulls the Cloudflare Tunnel token from OCI Vault and materialises it as a</span>
-<span class="c"># native Kubernetes Secret named &quot;cloudflared-tunnel-token&quot; in this namespace.</span>
-<span class="c">#</span>
-<span class="c"># IMPORTANT: ESO Oracle provider uses the OCI API &quot;GetSecretBundleByName&quot;,</span>
-<span class="c"># so remoteRef.key must be the secret NAME (as shown in OCI Vault console),</span>
-<span class="c"># NOT the OCID. The vault to search is taken from ClusterSecretStore.</span>
-<span class="c">#</span>
-<span class="c"># The cloudflared Deployment (next step) will consume this Secret via:</span>
-<span class="c">#   env:</span>
-<span class="c">#     - name: TUNNEL_TOKEN</span>
-<span class="c">#       valueFrom:</span>
-<span class="c">#         secretKeyRef:</span>
-<span class="c">#           name: cloudflared-tunnel-token</span>
-<span class="c">#           key:  token</span>
 <span class="k">apiVersion</span>: external-secrets.io/v1beta1
 <span class="k">kind</span>: ExternalSecret
 <span class="k">metadata</span>:
@@ -1003,7 +895,6 @@
   <span class="k">data</span>:
     - <span class="k">secretKey</span>: token
       <span class="k">remoteRef</span>:
-        <span class="c"># Name of the secret in OCI Vault</span>
         <span class="k">key</span>: cloudflared-tunnel-token</code></pre>
         </div>
       </div>
@@ -1030,23 +921,13 @@
           <div class="code-head">
             <span class="lbl">Live API — writer endpoint and the SODA REST call it makes internally</span>
           </div>
-<pre class="code"><code><span class="c"># Create a short URL via the writer endpoint</span>
-$ curl -X POST https://1ms.my/shorten \
+<pre class="code"><code>$ curl -X POST https://1ms.my/shorten \
     -H &quot;Content-Type: application/json&quot; \
     -d &#x27;{&quot;url&quot;:&quot;https://docs.kubernetes.io/some/long/path&quot;}&#x27;
 
-<span class="c"># Response: {&quot;short_url&quot;:&quot;https://1ms.my/abc123&quot;,&quot;code&quot;:&quot;abc123&quot;}</span>
-
-<span class="c"># Resolve a short code via the reader endpoint (returns 301 redirect)</span>
 $ curl -I https://1ms.my/abc123
 HTTP/2 301
-location: https://docs.kubernetes.io/some/long/path
-
-<span class="c"># Internally the writer pod does a SODA REST PUT to ADB (ADMIN schema):</span>
-<span class="c"># PUT https://&lt;adb-host&gt;.adb.&lt;region&gt;.oraclecloudapps.com/ords/admin/soda/latest/urls/abc123</span>
-<span class="c"># Authorization: Basic &lt;base64(ADMIN:****)&gt;</span>
-<span class="c"># Content-Type: application/json</span>
-<span class="c"># {&quot;long_url&quot;:&quot;https://docs.kubernetes.io/some/long/path&quot;,&quot;created_at&quot;:&quot;2026-05-26T19:00:00Z&quot;}</span></code></pre>
+location: https://docs.kubernetes.io/some/long/path</code></pre>
         </div>
       </div>
     </article>
