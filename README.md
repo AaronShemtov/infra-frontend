@@ -1,21 +1,19 @@
 # infra-frontend
 
-Infrastructure walkthrough — deployed at [infra.1ms.my](https://infra.1ms.my).
+**Platform Architecture** — deployed at [infra.1ms.my](https://infra.1ms.my/).
 
-Static one-page architecture deep-dive of the Kubernetes platform behind `1ms.my`, `cv.1ms.my` and this site. Same look-and-feel as `cv-frontend` (collapsible sections, dark/light theme), different content.
-
-## Editing content
-
-All content lives in `public/index.html`. Each section is a `<article class="experience expanded">` block — copy one to add a new section.
-
-After editing, push to `main`. GitHub Actions builds an arm64 image, pushes to OCIR. Flux Image Automation detects the new tag and rolls out the deployment in ~3 minutes.
+Static site for the 1ms.my platform.
 
 ## Stack
 
-- Static HTML/CSS/JS — no build step, no framework
-- nginx-unprivileged (Alpine) container, ~20 MB
-- GitHub Actions CI → OCIR
-- Flux Image Automation closes the GitOps loop
+- Static HTML / CSS / vanilla JS
+- nginx-unprivileged (Alpine), ~20 MB
+- GitHub Actions → OCIR (linux/arm64)
+- Flux Image Automation reconciles the tag bump back to [personal-k8s](https://github.com/AaronShemtov/personal-k8s)
+
+## Shared style
+
+All four 1ms.my sites (1ms.my, cv.1ms.my, infra.1ms.my, pwd.1ms.my) use the same `blueprint.css` file. To keep the visual identity in sync, the file is copied into each repository's `public/` directory.
 
 ## Local preview
 
@@ -25,6 +23,6 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-##  License
+## License
 
-MIT — see `LICENSE`.
+MIT.

@@ -1,521 +1,1025 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Platform Architecture — 1ms.my</title>
-    <meta name="description" content="Platform architecture and operations for the demonstration project behind 1ms.my, cv.1ms.my and infra.1ms.my — Oracle Cloud, OKE, Flux GitOps, Cloudflare, ESO + Vault.">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/styles.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Platform Architecture — infra.1ms.my</title>
+<meta name="description" content="The Kubernetes platform behind 1ms.my, cv.1ms.my and infra.1ms.my — OCI, OKE, Flux GitOps, Cloudflare, External Secrets + Vault." />
+<script>
+  // theme toggle (early to avoid flash)
+  (function(){ try { var t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/blueprint.css" />
 </head>
 <body>
-    <button id="theme-toggle" aria-label="Toggle dark/light theme" title="Toggle theme">
-        <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-    </button>
 
-    <main class="container">
+<div class="ribbon">
+  <div class="ribbon-inner">
+    <div class="ribbon-left">
+      <span class="brand">Aaron Shemtov <span style="color:var(--mute)">· platform docs</span></span>
+    </div>
+    <div style="display:flex; align-items:center; gap:18px;">
+      <nav class="ribbon-nav">
+        <a href="https://1ms.my/">1ms.my</a>
+        <a href="https://cv.1ms.my/">cv</a>
+        <a href="https://infra.1ms.my/" class="current">platform</a>
+        <a href="https://pwd.1ms.my/">pwd</a>
+      </nav>
+      <button class="theme-btn" id="theme-btn" aria-label="Toggle theme" title="Toggle theme">
+        <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
 
-        <header class="header">
-            <h1 class="name">Platform Architecture</h1>
-            <p class="title">The Kubernetes platform behind 1ms.my, cv.1ms.my and this page</p>
-            <ul class="contacts">
-                <li><a href="https://1ms.my">1ms.my</a></li>
-                <li><a href="https://cv.1ms.my">cv.1ms.my</a></li>
-                <li><a href="https://github.com/AaronShemtov" target="_blank" rel="noopener">github.com/AaronShemtov</a></li>
-            </ul>
+<main class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="crumbs">
+      <span>~/aaronshemtov</span><span class="sep">/</span><span>platform</span><span class="sep">/</span><span>architecture</span>
+    </div>
+
+    <div class="hero-grid">
+      <div class="title-block">
+        <h1 class="title"><span class="lt">/</span>Platform<br/>Architecture</h1>
+        <div class="title-tag">kubectl describe platform — il-jerusalem-1<span class="blink"></span></div>
+
+        <p class="lede">
+          A <strong>demonstration project</strong> I built and operate end-to-end. Because day-to-day client work is under NDA, this platform exists as a transparent reference of the practices I apply professionally.
+        </p>
+
+        <div class="tag-row">
+          <span class="tag-pill">multi-tenant kubernetes</span>
+          <span class="tag-pill">gitops</span>
+          <span class="tag-pill">image automation</span>
+          <span class="tag-pill">declarative ingress</span>
+          <span class="tag-pill">vault-sourced secrets</span>
+          <span class="tag-pill">zero static credentials</span>
+        </div>
+
+        <p class="lede" style="margin-top:18px;">
+          Three production sites hosted, all operated through GitOps from public GitHub. There is no manual <code>kubectl apply</code> against the cluster — every change in the cluster is the result of a Git commit. The repository layout is intentionally split across multiple small repositories, each with its own CI/CD pipeline, to model the structure of a real microservices platform.
+        </p>
+
+        <ul class="site-list">
+          <li><a href="https://1ms.my/"><span class="dot-i"></span><span><span class="name">1ms.my</span> <span class="desc">— URL shortener · Go backend, nginx frontend</span></span><span style="color:var(--mute)">↗</span></a></li>
+          <li><a href="https://cv.1ms.my/"><span class="dot-i"></span><span><span class="name">cv.1ms.my</span> <span class="desc">— CV with downloadable PDF</span></span><span style="color:var(--mute)">↗</span></a></li>
+          <li><span class="dot-i"></span><span><span class="name">infra.1ms.my</span> <span class="desc">— the page you are reading</span></span><span style="color:var(--accent);font-size:11px">YOU ARE HERE</span></li>
+          <li><a href="https://pwd.1ms.my/"><span class="dot-i"></span><span><span class="name">pwd.1ms.my</span> <span class="desc">— client-side cryptographic password generator</span></span><span style="color:var(--mute)">↗</span></a></li>
+          <li class="ext"><a href="https://github.com/AaronShemtov"><span class="gh-mark">⌘</span><span><span class="name">github.com/AaronShemtov</span> <span class="desc">— all source repositories</span></span><span style="color:var(--mute)">↗</span></a></li>
+        </ul>
+      </div>
+
+      <aside class="spec-card" aria-label="Platform spec">
+        <header>
+          <span class="title-text">Platform spec</span>
+          <span class="live-mark">live</span>
         </header>
+        <dl>
+          <dt>context</dt><dd>personal-Israel</dd>
+          <dt>cluster</dt><dd>cluster-ce2vlbatwta</dd>
+          <dt>region</dt><dd>il-jerusalem-1 · TLV</dd>
+          <dt>k8s</dt><dd>v1.32.1</dd>
+          <dt>flux</dt><dd>v2.6.4 · 6 controllers</dd>
+          <dt>nodes</dt><dd>3 × Ampere A1 <b>ARM64</b></dd>
+          <dt>pods</dt><dd>~46</dd>
+          <dt>app ns</dt><dd>4 tenants</dd>
+          <dt>repos</dt><dd>5 public</dd>
+          <div class="divider"></div>
+          <dt>ingress</dt><dd>Envoy Gateway · ClusterIP</dd>
+          <dt>edge</dt><dd>Cloudflare · 4 connectors</dd>
+          <dt>secrets</dt><dd>OCI Vault · ESO</dd>
+          <dt>data</dt><dd>Autonomous JSON DB</dd>
+          <div class="divider"></div>
+          <dt>inbound</dt><dd><b>0 ports</b></dd>
+          <dt>static creds</dt><dd><b>0</b></dd>
+          <dt>kubectl apply</dt><dd><b>0</b></dd>
+          <dt>operator</dt><dd>1 · solo</dd>
+          <dt>lead time</dt><dd>~3 min · git → pod</dd>
+        </dl>
+      </aside>
+    </div>
 
-        <section class="section">
-            <p>This page describes a <strong>demonstration project</strong> I built and operate end-to-end. Because day-to-day client work is covered by NDA, I created this platform as a transparent reference of the practices I apply professionally — multi-tenant Kubernetes, GitOps with automated image promotion, declarative ingress, managed-vault-sourced secrets, and zero static credentials.</p>
-            <p>The platform hosts three production sites:</p>
-            <ul>
-                <li><strong>1ms.my</strong> — a URL shortener (Go backend, nginx frontend).</li>
-                <li><strong>cv.1ms.my</strong> — my CV with downloadable PDF.</li>
-                <li><strong>infra.1ms.my</strong> — the page you are reading.</li>
-            </ul>
-            <p>Everything below is operated entirely through GitOps from public GitHub repositories. There is no manual <code>kubectl apply</code> against the cluster — every change in the cluster is the result of a Git commit. The repository layout is intentionally split across multiple small repositories, each with its own CI/CD pipeline, to model the structure of a real microservices platform.</p>
-        </section>
+    <!-- KPI -->
+    <div class="kpi-heading">
+      <span class="kpi-rule"></span>
+      <span class="kpi-title">Quick facts</span>
+      <span class="kpi-rule"></span>
+    </div>
+    <div class="kpi">
+      <div class="kpi-cell"><div class="kpi-num">5<span class="unit">public repos</span></div><div class="kpi-lbl">one per concern</div></div>
+      <div class="kpi-cell"><div class="kpi-num">3<span class="unit">worker nodes</span></div><div class="kpi-lbl">Ampere A1 · ARM64</div></div>
+      <div class="kpi-cell"><div class="kpi-num">~46<span class="unit">pods</span></div><div class="kpi-lbl">app + platform + system</div></div>
+      <div class="kpi-cell"><div class="kpi-num">4<span class="unit">app ns</span></div><div class="kpi-lbl">tenant isolation</div></div>
+      <div class="kpi-cell"><div class="kpi-num">6<span class="unit">controllers</span></div><div class="kpi-lbl">Flux v2.6.4</div></div>
+      <div class="kpi-cell"><div class="kpi-num">4<span class="unit">connectors</span></div><div class="kpi-lbl">Cloudflare Tunnel · TLV + MRS</div></div>
+      <div class="kpi-cell"><div class="kpi-num">~3<span class="unit">min</span></div><div class="kpi-lbl">git push → running pod</div></div>
+      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">inbound</span></div><div class="kpi-lbl">no LoadBalancer · no public IP</div></div>
+      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">static creds</span></div><div class="kpi-lbl">Vault · Instance Principal</div></div>
+      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">kubectl apply</span></div><div class="kpi-lbl">every change is a Git commit</div></div>
+      <div class="kpi-cell"><div class="kpi-num todo">—<span class="unit">uptime</span></div><div class="kpi-lbl">[TODO] real 30d availability</div></div>
+      <div class="kpi-cell"><div class="kpi-num todo">—<span class="unit">deploys / 30d</span></div><div class="kpi-lbl">[TODO] count from GH Actions</div></div>
+    </div>
 
-        <section class="section">
-            <h2>Architecture at a glance</h2>
-            <p>Request flow from a user's browser down to the application pods and the managed database:</p>
-            <!-- Inline-styled SVG. Colors are hardcoded semi-transparent so they
-                 work in both light and dark themes; text uses currentColor and
-                 inherits the page color. Total width capped via CSS max-width. -->
-            <div class="diagram-wrap">
-                <svg class="diagram" viewBox="0 0 760 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Application architecture diagram">
-                    <defs>
-                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-                            <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6" />
-                        </marker>
-                    </defs>
+    <!-- LIVE STATUS -->
+    <div class="live-bar" id="live-bar">
+      <div class="live-svc">
+        <span class="live-dot" data-url="https://1ms.my/"></span>
+        <div>
+          <div class="name">1ms.my</div>
+          <div class="meta" data-status="1ms.my">checking…</div>
+        </div>
+      </div>
+      <div class="live-svc">
+        <span class="live-dot" data-url="https://cv.1ms.my/"></span>
+        <div>
+          <div class="name">cv.1ms.my</div>
+          <div class="meta" data-status="cv.1ms.my">checking…</div>
+        </div>
+      </div>
+      <div class="live-svc">
+        <span class="live-dot" data-url="https://infra.1ms.my/"></span>
+        <div>
+          <div class="name">infra.1ms.my</div>
+          <div class="meta" data-status="infra.1ms.my">checking…</div>
+        </div>
+      </div>
+      <div class="live-svc">
+        <span class="live-dot" data-url="https://pwd.1ms.my/"></span>
+        <div>
+          <div class="name">pwd.1ms.my</div>
+          <div class="meta" data-status="pwd.1ms.my">checking…</div>
+        </div>
+      </div>
+    </div>
+    <div class="live-disclaimer">
+      ▸ live status is fetched from the public domains on page load. CORS may prevent the page from reading the response body — the dot turns green if the request completes without a network error, red otherwise. <span style="color:var(--warn)">[TODO]</span> wire to a real <code>/healthz</code> endpoint once observability stack ships.
+    </div>
+  </section>
 
-                    <!-- Internet -->
-                    <rect x="280" y="20" width="200" height="50" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5" />
-                    <text x="380" y="50" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Internet (User)</text>
-                    <line x1="380" y1="70" x2="380" y2="100" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)" />
-                    <text x="410" y="90" font-size="11" fill="currentColor" opacity="0.7">HTTPS</text>
+  <!-- ARCHITECTURE DIAGRAM -->
+  <section class="block" id="diagram">
+    <div class="sec-head">
+      <span class="sec-num">01 ·</span>
+      <h2 class="sec-title">Architecture at a glance</h2>
+    </div>
+    <p class="sec-sub">Request flow from a user's browser down to the application pods and the managed database. <span class="diagram-hint">▸ click any highlighted node to jump to its section</span></p>
+    <div class="diagram-wrap">
+      <svg class="diagram" viewBox="0 0 760 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Application architecture diagram">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6"></path>
+          </marker>
+        </defs>
+        <g class="clickable" data-acc="K8S">
+        <rect x="30" y="220" width="700" height="500" rx="8" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.6"></rect>
+        <text x="50" y="245" font-size="11" font-family="JetBrains Mono, monospace" fill="#3b82f6" opacity="0.85">OKE cluster · il-jerusalem-1</text>
+        </g>
+        <rect x="280" y="20" width="200" height="50" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+        <text x="380" y="50" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Internet (User)</text>
+        <line x1="380" y1="70" x2="380" y2="100" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <text x="410" y="90" font-size="11" fill="currentColor" opacity="0.7">HTTPS</text>
+        <g class="clickable" data-acc="CLOUDFLARE">
+        <rect x="220" y="105" width="320" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+        <text x="380" y="130" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Cloudflare Edge</text>
+        <text x="380" y="152" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">TLS · DDoS · CDN · DNS proxy</text>
+        </g>
+        <line x1="380" y1="170" x2="380" y2="210" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <text x="410" y="195" font-size="11" fill="currentColor" opacity="0.7">Cloudflare Tunnel (outbound TLS)</text>
+        <g class="clickable" data-acc="CLOUDFLARE">
+        <rect x="280" y="260" width="200" height="55" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="380" y="283" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">cloudflared × 2</text>
+        <text x="380" y="302" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">ns: cloudflare</text>
+        </g>
+        <line x1="380" y1="315" x2="380" y2="345" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <g class="clickable" data-acc="INGRESS">
+        <rect x="220" y="350" width="320" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+        <text x="380" y="375" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Envoy Gateway</text>
+        <text x="380" y="397" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">Gateway API · ClusterIP · hostname routing</text>
+        </g>
+        <line x1="160" y1="415" x2="160" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="380" y1="415" x2="380" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="600" y1="415" x2="600" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <text x="180" y="438" font-size="11" fill="currentColor" opacity="0.7">1ms.my</text>
+        <text x="400" y="438" font-size="11" fill="currentColor" opacity="0.7">cv.1ms.my</text>
+        <text x="620" y="438" font-size="11" fill="currentColor" opacity="0.7">infra.1ms.my</text>
+        <g class="clickable" data-acc="SHORTENER">
+        <rect x="50" y="465" width="220" height="190" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="160" y="487" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">ns: urlshortener</text>
+        <rect x="65" y="500" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="160" y="520" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">writer × 2</text>
+        <text x="160" y="535" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">POST /shorten · /createcustom</text>
+        <rect x="65" y="548" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="160" y="568" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">reader × 2</text>
+        <text x="160" y="583" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">GET /{code} · scales independently</text>
+        <rect x="65" y="596" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="160" y="616" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">frontend × 2</text>
+        <text x="160" y="631" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">nginx · static HTML form</text>
+        </g>
+        <g class="clickable" data-acc="SHORTENER">
+        <rect x="290" y="465" width="180" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="380" y="487" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">ns: cv</text>
+        <rect x="305" y="500" width="150" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="380" y="520" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">cv-frontend × 2</text>
+        <text x="380" y="535" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">static CV page</text>
+        </g>
+        <g class="clickable" data-acc="SHORTENER">
+        <rect x="490" y="465" width="220" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="600" y="487" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">ns: infra</text>
+        <rect x="505" y="500" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="600" y="520" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">infra-frontend × 2</text>
+        <text x="600" y="535" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">this page</text>
+        </g>
+        <line x1="100" y1="655" x2="100" y2="780" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="220" y1="655" x2="220" y2="780" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <text x="245" y="700" font-size="11" fill="currentColor" opacity="0.7">SODA REST · HTTPS</text>
+        <g class="clickable" data-acc="DATABASE">
+        <rect x="40" y="790" width="240" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+        <text x="160" y="815" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Autonomous JSON Database</text>
+        <text x="160" y="836" font-size="11.5" fill="currentColor" opacity="0.7" text-anchor="middle">OCI managed · same region</text>
+        </g>
+      </svg>
+    </div>
+  </section>
 
-                    <!-- Cloudflare -->
-                    <rect x="220" y="105" width="320" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5" />
-                    <text x="380" y="130" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Cloudflare Edge</text>
-                    <text x="380" y="152" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">TLS · DDoS · CDN · DNS proxy</text>
-                    <line x1="380" y1="170" x2="380" y2="210" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)" />
-                    <text x="410" y="195" font-size="11" fill="currentColor" opacity="0.7">Cloudflare Tunnel (outbound TLS)</text>
+  <!-- DETAILED WALKTHROUGH -->
+  <section class="block" id="walkthrough">
+    <div class="sec-head">
+      <span class="sec-num">02 ·</span>
+      <h2 class="sec-title">Detailed walkthrough</h2>
+    </div>
+    <p class="sec-sub">Each component explained — what it does, how it's wired, and the manifests behind it.</p>
+    <div class="walk-controls">
+      <nav class="in-page-nav" aria-label="walkthrough sections">
+        <a href="#acc-cloud">oci</a>
+        <a href="#acc-k8s">k8s</a>
+        <a href="#acc-net">ingress</a>
+        <a href="#acc-cf">cloudflare</a>
+        <a href="#acc-flux">flux</a>
+        <a href="#acc-cicd">ci/cd</a>
+        <a href="#acc-sec">secrets</a>
+        <a href="#acc-data">database</a>
+        <a href="#acc-app">shortener</a>
+        <a href="#acc-pods">pods</a>
+        <a href="#acc-obs">obs</a>
+        <a href="#acc-repos">repos</a>
+      </nav>
+      <button class="bulk-toggle" id="bulk-toggle" type="button">Expand all</button>
+    </div>
 
-                    <!-- Cluster boundary -->
-                    <rect x="30" y="220" width="700" height="500" rx="8" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.6" />
-                    <text x="50" y="245" font-size="11" font-family="ui-monospace, monospace" fill="#3b82f6" opacity="0.85">OKE cluster · il-jerusalem-1</text>
 
-                    <!-- cloudflared -->
-                    <rect x="280" y="260" width="200" height="55" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1" />
-                    <text x="380" y="283" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">cloudflared × 2</text>
-                    <text x="380" y="302" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">ns: cloudflare</text>
-                    <line x1="380" y1="315" x2="380" y2="345" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)" />
+    <!-- 1. CLOUD PLATFORM -->
+    <article class="acc" id="acc-cloud">
+      <div class="acc-head">
+        <span class="acc-tag">OCI</span>
+        <div class="acc-titles">
+          <h3>Cloud platform — Oracle Cloud Infrastructure</h3>
+          <div class="acc-meta">Region: il-jerusalem-1</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>The entire platform runs on <strong>Oracle Cloud Infrastructure (OCI)</strong> in the <code>il-jerusalem-1</code> region. The services in active use:</p>
+        <ul>
+          <li><strong>Compute (Ampere A1)</strong> — Arm-based virtual machines allocated as the OKE worker pool.</li>
+          <li><strong>Container Engine for Kubernetes (OKE)</strong> — managed Kubernetes control plane.</li>
+          <li><strong>Block Volume</strong> — boot volumes for worker nodes; later, persistent volumes for the observability stack.</li>
+          <li><strong>Container Registry (OCIR)</strong> — private repositories for every application image.</li>
+          <li><strong>Vault</strong> — master encryption keys and tenancy-managed secrets. Source of truth for all runtime credentials.</li>
+          <li><strong>Autonomous Database (JSON workload)</strong> — managed document store accessed over SODA REST.</li>
+          <li><strong>IAM (Dynamic Groups + Policies)</strong> — grants the OKE worker node identity scoped access to Vault secrets and the database, eliminating static cloud credentials.</li>
+        </ul>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">IAM Dynamic Group + Policy (Terraform)</span>
+            <span class="placeholder-tag">replace with real</span>
+          </div>
+<pre class="code"><code><span class="c"># TODO: paste actual content from personal-k8s repo</span>
+<span class="k">resource</span> <span class="s">"oci_identity_dynamic_group"</span> <span class="s">"oke_workers"</span> {
+  <span class="k">compartment_id</span> = var.tenancy_ocid
+  <span class="k">name</span>           = <span class="s">"oke-worker-nodes"</span>
+  <span class="k">matching_rule</span>  = <span class="s">"ALL {instance.compartment.id = '${var.compartment_id}'}"</span>
+}
 
-                    <!-- Envoy Gateway -->
-                    <rect x="220" y="350" width="320" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5" />
-                    <text x="380" y="375" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Envoy Gateway</text>
-                    <text x="380" y="397" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">Gateway API · ClusterIP · hostname routing</text>
-
-                    <!-- Lines to namespaces -->
-                    <line x1="160" y1="415" x2="160" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)" />
-                    <line x1="380" y1="415" x2="380" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)" />
-                    <line x1="600" y1="415" x2="600" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)" />
-                    <text x="180" y="438" font-size="11" fill="currentColor" opacity="0.7" text-anchor="start">1ms.my</text>
-                    <text x="400" y="438" font-size="11" fill="currentColor" opacity="0.7" text-anchor="start">cv.1ms.my</text>
-                    <text x="620" y="438" font-size="11" fill="currentColor" opacity="0.7" text-anchor="start">infra.1ms.my</text>
-
-                    <!-- urlshortener namespace -->
-                    <rect x="50" y="465" width="220" height="190" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7" />
-                    <text x="160" y="487" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">ns: urlshortener</text>
-                    <rect x="65" y="500" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1" />
-                    <text x="160" y="520" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">writer × 2</text>
-                    <text x="160" y="535" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">POST /shorten · /createcustom</text>
-                    <rect x="65" y="548" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1" />
-                    <text x="160" y="568" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">reader × 2</text>
-                    <text x="160" y="583" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">GET /{code} · scales independently</text>
-                    <rect x="65" y="596" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1" />
-                    <text x="160" y="616" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">frontend × 2</text>
-                    <text x="160" y="631" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">nginx · static HTML form</text>
-
-                    <!-- cv namespace -->
-                    <rect x="290" y="465" width="180" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7" />
-                    <text x="380" y="487" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">ns: cv</text>
-                    <rect x="305" y="500" width="150" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1" />
-                    <text x="380" y="520" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">cv-frontend × 2</text>
-                    <text x="380" y="535" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">static CV page</text>
-
-                    <!-- infra namespace -->
-                    <rect x="490" y="465" width="220" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7" />
-                    <text x="600" y="487" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">ns: infra</text>
-                    <rect x="505" y="500" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1" />
-                    <text x="600" y="520" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">infra-frontend × 2</text>
-                    <text x="600" y="535" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">this page</text>
-
-                    <!-- Lines to ADB -->
-                    <line x1="100" y1="655" x2="100" y2="780" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)" />
-                    <line x1="220" y1="655" x2="220" y2="780" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)" />
-                    <text x="245" y="700" font-size="11" fill="currentColor" opacity="0.7">SODA REST · HTTPS</text>
-
-                    <!-- ADB -->
-                    <rect x="40" y="790" width="240" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5" />
-                    <text x="160" y="815" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Autonomous JSON Database</text>
-                    <text x="160" y="836" font-size="11.5" fill="currentColor" opacity="0.7" text-anchor="middle">OCI managed · same region</text>
-                </svg>
-            </div>
-        </section>
-
-        <section class="section">
-            <div class="section-header">
-                <h2>Detailed walkthrough</h2>
-                <button class="bulk-toggle" id="bulk-toggle" type="button">Collapse all</button>
-            </div>
-
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Cloud platform — Oracle Cloud Infrastructure</h3>
-                        <p class="company">Region: il-jerusalem-1</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>The entire platform runs on <strong>Oracle Cloud Infrastructure (OCI)</strong> in the <code>il-jerusalem-1</code> region. The services in active use:</p>
-                    <ul>
-                        <li><strong>Compute (Ampere A1)</strong> — Arm-based virtual machines allocated as the OKE worker pool.</li>
-                        <li><strong>Container Engine for Kubernetes (OKE)</strong> — managed Kubernetes control plane.</li>
-                        <li><strong>Block Volume</strong> — boot volumes for worker nodes; later, persistent volumes for the observability stack.</li>
-                        <li><strong>Container Registry (OCIR)</strong> — private repositories for every application image.</li>
-                        <li><strong>Vault</strong> — master encryption keys and tenancy-managed secrets. Source of truth for all runtime credentials.</li>
-                        <li><strong>Autonomous Database (JSON workload)</strong> — managed document store accessed over SODA REST.</li>
-                        <li><strong>IAM (Dynamic Groups + Policies)</strong> — grants the OKE worker node identity scoped access to Vault secrets and the database, eliminating static cloud credentials.</li>
-                    </ul>
-                </div>
-            </article>
-
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Kubernetes — OKE cluster</h3>
-                        <p class="company">v1.32.1 · 3 worker nodes · VCN-Native CNI · OCI Block CSI</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>The cluster has three worker nodes, intentionally heterogeneous in capacity:</p>
-                    <ul>
-                        <li><strong><code>10.0.1.37</code></strong> — 1 OCPU / 6 GB RAM — application workloads.</li>
-                        <li><strong><code>10.0.1.66</code></strong> — 1 OCPU / 6 GB RAM — application workloads, paired with <code>.37</code> through pod anti-affinity for HA during rolling updates.</li>
-                        <li><strong><code>10.0.1.135</code></strong> — 2 OCPU / 12 GB RAM — reserved for the observability stack (Prometheus, Grafana, Loki), which will be deployed in a future iteration.</li>
-                    </ul>
-                    <p>The asymmetric split provides one larger node sized for memory-heavy observability workloads while keeping two smaller application nodes whose loss is absorbed by anti-affinity-spread replicas.</p>
-                    <p>The <strong>restricted</strong> Pod Security Standard is enforced per namespace. All workloads run as non-root, drop all Linux capabilities, use the <code>RuntimeDefault</code> seccomp profile, and mount a read-only root filesystem where the application permits.</p>
-                    <p>Below is a live view of the three nodes from k9s:</p>
-                    <figure class="figure">
-                        <img src="/img/nodes.png" alt="k9s screenshot showing three OKE worker nodes with CPU, memory and pod allocations" loading="lazy">
-                        <figcaption>OKE worker nodes — version, pod count, CPU and memory usage.</figcaption>
-                    </figure>
-                </div>
-            </article>
-
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Networking and ingress</h3>
-                        <p class="company">Envoy Gateway · Kubernetes Gateway API · ClusterIP only</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>The cluster has no public IP address and no inbound firewall openings. There is no public load balancer attached to any Service. All ingress is delivered through outbound Cloudflare Tunnel connections — see the Cloudflare section.</p>
-                    <p>Inside the cluster, <strong>Envoy Gateway 1.x</strong> implements the standard Kubernetes Gateway API. An <code>EnvoyProxy</code> custom resource explicitly pins the data-plane Service type to <code>ClusterIP</code>, overriding the default <code>LoadBalancer</code> behaviour. A single <code>Gateway</code> resource exposes one HTTP listener on port 80; <code>allowedRoutes.namespaces.from: All</code> permits <code>HTTPRoute</code> resources from any application namespace to attach without ReferenceGrants.</p>
-                    <p>Hostname-based routing:</p>
-                    <ul>
-                        <li><code>1ms.my</code> → <code>urlshortener</code> namespace (writer, reader, frontend Services selected by path)</li>
-                        <li><code>cv.1ms.my</code> → <code>cv</code> namespace (<code>cv-frontend</code>)</li>
-                        <li><code>infra.1ms.my</code> → <code>infra</code> namespace (this page)</li>
-                    </ul>
-                </div>
-            </article>
-
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>DNS, edge and tunnel — Cloudflare</h3>
-                        <p class="company">Domain on Dynadot · DNS &amp; proxy on Cloudflare · 4 tunnel connectors</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <ul>
-                        <li><strong>Registrar</strong> — the <code>1ms.my</code> domain is registered with <strong>Dynadot</strong>. The Dynadot domain has its nameservers delegated to Cloudflare, so Cloudflare hosts the authoritative DNS zone.</li>
-                        <li><strong>DNS</strong> — zone <code>1ms.my</code> on Cloudflare. Each subdomain (apex, <code>cv</code>, <code>infra</code>) is a CNAME pointing at the homelab tunnel. Cloudflare creates these records automatically when public hostnames are added to the tunnel.</li>
-                        <li><strong>Proxy (orange-cloud)</strong> — all traffic terminates TLS at Cloudflare's edge. This provides automatic TLS certificates, DDoS protection, edge caching of static assets, and HTTP analytics.</li>
-                        <li><strong>Cloudflare Tunnel</strong> — <code>cloudflared</code> runs as a 2-replica Deployment inside the cluster and establishes outbound TLS connections to Cloudflare's edge. The tunnel currently reports HEALTHY with 4 connectors across Tel Aviv and Marseille edge POPs.</li>
-                        <li><strong>Tunnel hostnames</strong> route each domain to the in-cluster Envoy data-plane Service over HTTP. The cluster never accepts unsolicited inbound traffic from the public internet.</li>
-                    </ul>
-                    <p>The DNS zone configuration:</p>
-                    <figure class="figure">
-                        <img src="/img/cloudflare-dns.png" alt="Cloudflare DNS Records for 1ms.my showing apex, cv and infra CNAMEs proxied through Cloudflare" loading="lazy">
-                        <figcaption>Cloudflare DNS Records for <code>1ms.my</code> — all proxied (orange-cloud).</figcaption>
-                    </figure>
-                </div>
-            </article>
-
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>GitOps — Flux</h3>
-                        <p class="company">Flux v2.6.4 · 6 controllers · Image Automation closes the loop</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>The cluster's desired state is declared entirely in the <a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener"><strong>AaronShemtov/personal-k8s</strong></a> repository. Flux reconciles the cluster against this repository every minute. The repository is the single source of truth — there is no production change that is not first a Git commit.</p>
-                    <p>Six Flux controllers run in the <code>flux-system</code> namespace:</p>
-                    <ul>
-                        <li><code>source-controller</code> — pulls Git, OCI and Helm sources.</li>
-                        <li><code>kustomize-controller</code> — applies Kustomize overlays.</li>
-                        <li><code>helm-controller</code> — reconciles HelmReleases.</li>
-                        <li><code>notification-controller</code> — emits alerts and receives webhooks.</li>
-                        <li><code>image-reflector-controller</code> — scans container registries for new tags.</li>
-                        <li><code>image-automation-controller</code> — commits image tag updates back to Git.</li>
-                    </ul>
-                    <p>Two root Kustomizations layer the cluster:</p>
-                    <ul>
-                        <li><code>infrastructure</code> — applies everything under <code>./infrastructure/</code> (Gateway API CRDs, Envoy Gateway, External Secrets Operator, cloudflared, image-automation, metrics-server).</li>
-                        <li><code>applications</code> — applies everything under <code>./applications/</code> (urlshortener, cv, infra). Depends on <code>infrastructure</code> being reconciled first.</li>
-                    </ul>
-                    <p>The Git connection uses SSH with a write-enabled deploy key. The same key Flux uses to <em>pull</em> manifests is reused to <em>push</em> image tag updates produced by the Image Automation pipeline.</p>
-                </div>
-            </article>
-
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>CI/CD pipeline — closed-loop GitOps</h3>
-                        <p class="company">GitHub Actions → OCIR → Flux Image Automation → cluster</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>A push to any service repository propagates to running pods automatically. The diagram below shows the full loop:</p>
-                    <div class="diagram-wrap">
-                        <svg class="diagram" viewBox="0 0 760 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CI/CD GitOps loop diagram">
-                            <defs>
-                                <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-                                    <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6" />
-                                </marker>
-                            </defs>
-
-                            <rect x="280" y="15" width="200" height="50" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5" />
-                            <text x="380" y="45" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Developer</text>
-                            <line x1="380" y1="65" x2="380" y2="105" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)" />
-                            <text x="395" y="90" font-size="11" fill="currentColor" opacity="0.7">git push</text>
-
-                            <rect x="180" y="110" width="400" height="65" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1" />
-                            <text x="380" y="135" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Service repository</text>
-                            <text x="380" y="157" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">urlshortener-backend · urlshortener-frontend</text>
-                            <text x="380" y="172" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">cv-frontend · infra-frontend</text>
-                            <line x1="380" y1="175" x2="380" y2="215" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)" />
-                            <text x="395" y="200" font-size="11" fill="currentColor" opacity="0.7">workflow trigger</text>
-
-                            <rect x="180" y="220" width="400" height="80" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5" />
-                            <text x="380" y="245" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">GitHub Actions</text>
-                            <text x="380" y="267" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">build linux/arm64 multi-tag image</text>
-                            <text x="380" y="287" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">tags: 0.0.&lt;run_number&gt; · &lt;short-sha&gt; · latest</text>
-                            <line x1="380" y1="300" x2="380" y2="340" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)" />
-                            <text x="395" y="325" font-size="11" fill="currentColor" opacity="0.7">docker push</text>
-
-                            <rect x="220" y="345" width="320" height="60" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1" />
-                            <text x="380" y="370" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">OCIR</text>
-                            <text x="380" y="392" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">il-jerusalem-1.ocir.io</text>
-                            <line x1="380" y1="405" x2="380" y2="450" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)" />
-                            <text x="395" y="430" font-size="11" fill="currentColor" opacity="0.7">scan every 2 min</text>
-
-                            <rect x="120" y="455" width="520" height="105" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1" />
-                            <text x="380" y="480" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Flux Image Automation</text>
-                            <text x="380" y="502" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">ImageRepository → scans OCIR</text>
-                            <text x="380" y="520" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">ImagePolicy → selects highest semver tag</text>
-                            <text x="380" y="540" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">ImageUpdateAutomation → commits update</text>
-                            <line x1="380" y1="560" x2="380" y2="605" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)" />
-                            <text x="395" y="585" font-size="11" fill="currentColor" opacity="0.7">commit via SSH</text>
-
-                            <rect x="180" y="610" width="400" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5" />
-                            <text x="380" y="635" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">personal-k8s repository</text>
-                            <text x="380" y="657" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">GitOps source of truth · auto-commit by Flux</text>
-                            <line x1="380" y1="675" x2="380" y2="715" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)" />
-                            <text x="395" y="700" font-size="11" fill="currentColor" opacity="0.7">poll every 1 min</text>
-
-                            <rect x="120" y="720" width="520" height="80" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1" />
-                            <text x="380" y="745" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Flux on the cluster</text>
-                            <text x="380" y="767" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">source-controller pulls · kustomize-controller applies</text>
-                            <text x="380" y="785" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">Deployment image tag updated</text>
-                            <line x1="380" y1="800" x2="380" y2="840" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)" />
-                            <text x="395" y="825" font-size="11" fill="currentColor" opacity="0.7">rolling update</text>
-
-                            <rect x="220" y="845" width="320" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5" />
-                            <text x="380" y="870" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">New pods running</text>
-                            <text x="380" y="892" font-size="11.5" fill="currentColor" opacity="0.7" text-anchor="middle">≈ 3 minutes after git push</text>
-                        </svg>
-                    </div>
-                    <p>Why GitHub Actions: it integrates directly with the source repository, provides build caches per repo, and runs at no additional cost on this scale. The OCI Ampere A1 compute pool is fully allocated to the OKE worker nodes, so an in-tenancy CI runner is not an option here.</p>
-                    <p>Builds target <code>linux/arm64</code> only, matching the Ampere A1 worker node architecture. The build itself runs natively on the GitHub-hosted amd64 runner; only the binary is cross-compiled via <code>docker buildx</code>. This avoids QEMU emulation entirely.</p>
-                    <p>The four private OCIR repositories holding the images:</p>
-                    <figure class="figure">
-                        <img src="/img/ocir.png" alt="OCI Container Registry showing infra-frontend, cv-frontend, urlshortener-frontend, urlshortener-backend repositories with image counts and sizes" loading="lazy">
-                        <figcaption>OCI Container Registry — four private repositories, one per service.</figcaption>
-                    </figure>
-                </div>
-            </article>
-
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Secrets management</h3>
-                        <p class="company">External Secrets Operator · OCI Vault · Instance Principal</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p><strong>External Secrets Operator (ESO)</strong> reconciles Kubernetes <code>Secret</code> resources from OCI Vault on a schedule. A single <code>ClusterSecretStore</code> named <code>oci-vault</code> is configured with <strong>Instance Principal</strong> authentication — the OKE worker node identity is granted Vault read access via an OCI Dynamic Group and Policy. No static cloud credentials are stored anywhere in the cluster or in Git.</p>
-                    <p>Vault secrets currently in use:</p>
-                    <ul>
-                        <li><code>cloudflared-tunnel-token</code> — the token authorising the Cloudflare Tunnel.</li>
-                        <li><code>ocir-auth-token</code> — pull credentials for OCIR, materialised as a <code>dockerconfigjson</code> Secret in every application namespace.</li>
-                        <li><code>adb-admin-password</code> — Autonomous Database password, consumed by the writer and reader pods as the <code>ADB_PASSWORD</code> environment variable.</li>
-                    </ul>
-                    <p>Every application namespace contains an <code>ExternalSecret</code> resource referencing the relevant Vault key. Rotation is performed in Vault and propagates within <code>refreshInterval: 1h</code>. No secret material is committed to Git at any point.</p>
-                </div>
-            </article>
-
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Data layer — Autonomous JSON Database</h3>
-                        <p class="company">Managed document store · SODA REST API over HTTPS</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>The URL shortener persists its data in an <strong>Oracle Autonomous Database</strong> provisioned with the JSON workload type, in the same region as the cluster. The backend communicates with the database exclusively through the <strong>SODA REST API</strong> — standard HTTPS with HTTP Basic Authentication. The Go service therefore uses only the standard library's <code>net/http</code>; no Oracle client libraries, no mTLS wallet, no CGO. The resulting container image remains distroless, static, and non-root.</p>
-                    <p>The schema is a single SODA collection named <code>urls</code>, with VARCHAR2 client-assigned keys (the short codes). Document shape:</p>
-                    <pre><code>{
-  "long_url":   "https://...",
-  "created_at": "ISO-8601 timestamp"
+<span class="k">resource</span> <span class="s">"oci_identity_policy"</span> <span class="s">"oke_workers_vault"</span> {
+  <span class="k">compartment_id</span> = var.compartment_id
+  <span class="k">name</span>           = <span class="s">"oke-workers-read-vault"</span>
+  <span class="k">statements</span>     = [
+    <span class="s">"Allow dynamic-group oke-worker-nodes to read secret-family in compartment personal"</span>,
+    <span class="s">"Allow dynamic-group oke-worker-nodes to use vaults in compartment personal"</span>,
+  ]
 }</code></pre>
-                </div>
-            </article>
+        </div>
+      </div>
+    </article>
 
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Application architecture — URL Shortener</h3>
-                        <p class="company">Writer / reader / frontend split · independent scaling</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>The URL shortener is intentionally split into <strong>three independent Deployments</strong> in the <code>urlshortener</code> namespace. The split is a deliberate design decision aligned with the read/write asymmetry of a real shortener service.</p>
-                    <ul>
-                        <li><strong>writer (2 replicas)</strong> — handles <code>POST /shorten</code> and <code>POST /createcustom</code>. Generates the short code, writes the document to the Autonomous Database via SODA REST <code>PUT</code>, and returns the short URL to the caller. Started in <code>MODE=writer</code> via environment variable; the writer image registers only POST handlers.</li>
-                        <li><strong>reader (2 replicas)</strong> — handles <code>GET /{6-char-code}</code>. Reads the document from the database and returns a 301 redirect to the long URL. Started in <code>MODE=reader</code>.</li>
-                        <li><strong>frontend (2 nginx replicas)</strong> — serves the static single-page application that submits requests to the writer endpoint.</li>
-                    </ul>
-                    <p><strong>Why split writer from reader?</strong> A real URL shortener serves orders of magnitude more reads than writes — a single short link can be shared on social media and receive thousands of redirects per second while the write-side load remains effectively unchanged. By running the read path as a separate Deployment, the reader can scale horizontally (Horizontal Pod Autoscaler on CPU or request-rate) without provisioning additional writer capacity. The writer retains its small, predictable footprint. The two paths can also be deployed, drained, and rolled back independently — useful when migrating the storage backend or rolling out cache changes that affect only the read side.</p>
-                    <p><strong>Why the multi-Deployment, multi-namespace, multi-repository layout overall?</strong> The platform is structured to model a <strong>microservices architecture</strong>: each user-facing capability is its own Deployment (often its own namespace and source repository), with its own image, its own CI/CD pipeline, its own resource budget, and its own scaling profile. This mirrors how real production platforms are organised.</p>
-                </div>
-            </article>
+    <!-- 2. KUBERNETES -->
+    <article class="acc" id="acc-k8s">
+      <div class="acc-head">
+        <span class="acc-tag">K8S</span>
+        <div class="acc-titles">
+          <h3>Kubernetes — OKE cluster</h3>
+          <div class="acc-meta">v1.32.1 · 3 worker nodes · VCN-Native CNI · OCI Block CSI</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>The cluster has three worker nodes, intentionally heterogeneous in capacity:</p>
+        <ul>
+          <li><strong><code>10.0.1.37</code></strong> — 1 OCPU / 6 GB RAM — application workloads.</li>
+          <li><strong><code>10.0.1.66</code></strong> — 1 OCPU / 6 GB RAM — application workloads, paired with <code>.37</code> through pod anti-affinity for HA during rolling updates.</li>
+          <li><strong><code>10.0.1.135</code></strong> — 2 OCPU / 12 GB RAM — reserved for the observability stack (Prometheus, Grafana, Loki), which will be deployed in a future iteration.</li>
+        </ul>
+        <p>The asymmetric split provides one larger node sized for memory-heavy observability workloads while keeping two smaller application nodes whose loss is absorbed by anti-affinity-spread replicas.</p>
+        <p>The <strong>restricted</strong> Pod Security Standard is enforced per namespace. All workloads run as non-root, drop all Linux capabilities, use the <code>RuntimeDefault</code> seccomp profile, and mount a read-only root filesystem where the application permits.</p>
+        <p>Below is a live view of the three nodes from k9s:</p>
+        <figure>
+          <img src="/img/nodes.png" alt="k9s screenshot showing three OKE worker nodes with CPU, memory and pod allocations" loading="lazy" />
+          <figcaption>OKE worker nodes — version, pod count, CPU and memory usage.</figcaption>
+        </figure>
+      </div>
+    </article>
 
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Cluster pod inventory</h3>
-                        <p class="company">Live view from k9s</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>The cluster currently runs around 46 pods distributed across the namespaces below. The pod count includes platform components (Flux controllers, Envoy Gateway, External Secrets Operator, Cloudflare Tunnel), node-local DaemonSets (CNI, CSI, kube-proxy, OKE node observability agents), and application workloads.</p>
-                    <p>Application namespaces:</p>
-                    <ul>
-                        <li><code>urlshortener</code> — writer × 2, reader × 2, frontend × 2 (6 pods)</li>
-                        <li><code>cv</code> — cv-frontend × 2</li>
-                        <li><code>infra</code> — infra-frontend × 2</li>
-                    </ul>
-                    <p>Platform namespaces:</p>
-                    <ul>
-                        <li><code>flux-system</code> — 6 Flux controllers</li>
-                        <li><code>envoy-gateway-system</code> — Envoy control plane and data plane</li>
-                        <li><code>external-secrets</code> — ESO controller, webhook, cert-controller</li>
-                        <li><code>cloudflare</code> — cloudflared × 2</li>
-                        <li><code>kube-system</code> — CoreDNS, OCI CSI, OCI VCN CNI, kube-proxy, metrics-server, OKE node observability and problem-detection agents</li>
-                    </ul>
-                    <figure class="figure">
-                        <img src="/img/pods-1.png" alt="k9s screenshot of cluster pods — flux-system, cv, envoy-gateway-system, external-secrets, infra namespaces" loading="lazy">
-                        <figcaption>Cluster pods — Flux, Envoy Gateway, External Secrets, application namespaces (part 1).</figcaption>
-                    </figure>
-                    <figure class="figure">
-                        <img src="/img/pods-2.png" alt="k9s screenshot of cluster pods — kube-system, urlshortener namespace, OKE node agents" loading="lazy">
-                        <figcaption>Cluster pods — kube-system (CoreDNS, CSI, CNI, kube-proxy, OKE agents) and the urlshortener workloads (part 2).</figcaption>
-                    </figure>
-                </div>
-            </article>
+    <!-- 3. NETWORKING -->
+    <article class="acc" id="acc-net">
+      <div class="acc-head">
+        <span class="acc-tag">INGRESS</span>
+        <div class="acc-titles">
+          <h3>Networking and ingress</h3>
+          <div class="acc-meta">Envoy Gateway · Kubernetes Gateway API · ClusterIP only</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>The cluster has no public IP address and no inbound firewall openings. There is no public load balancer attached to any Service. All ingress is delivered through outbound Cloudflare Tunnel connections — see the Cloudflare section.</p>
+        <p>Inside the cluster, <strong>Envoy Gateway 1.x</strong> implements the standard Kubernetes Gateway API. An <code>EnvoyProxy</code> custom resource explicitly pins the data-plane Service type to <code>ClusterIP</code>, overriding the default <code>LoadBalancer</code> behaviour. A single <code>Gateway</code> resource exposes one HTTP listener on port 80; <code>allowedRoutes.namespaces.from: All</code> permits <code>HTTPRoute</code> resources from any application namespace to attach without ReferenceGrants.</p>
+        <p>Hostname-based routing:</p>
+        <ul>
+          <li><code>1ms.my</code> → <code>urlshortener</code> namespace (writer, reader, frontend Services selected by path)</li>
+          <li><code>cv.1ms.my</code> → <code>cv</code> namespace (<code>cv-frontend</code>)</li>
+          <li><code>infra.1ms.my</code> → <code>infra</code> namespace (this page)</li>
+        </ul>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">Gateway + HTTPRoute (cv.1ms.my)</span>
+            <span class="placeholder-tag">replace with real from personal-k8s</span>
+          </div>
+<pre class="code"><code><span class="c"># TODO: paste actual content from personal-k8s repo</span>
+<span class="k">apiVersion</span>: gateway.networking.k8s.io/v1
+<span class="k">kind</span>: Gateway
+<span class="k">metadata</span>:
+  <span class="k">name</span>: homelab-gateway
+  <span class="k">namespace</span>: envoy-gateway-system
+<span class="k">spec</span>:
+  <span class="k">gatewayClassName</span>: eg
+  <span class="k">listeners</span>:
+    - <span class="k">name</span>: http
+      <span class="k">protocol</span>: HTTP
+      <span class="k">port</span>: <span class="n">80</span>
+      <span class="k">allowedRoutes</span>:
+        <span class="k">namespaces</span>: { <span class="k">from</span>: All }
+---
+<span class="k">apiVersion</span>: gateway.networking.k8s.io/v1
+<span class="k">kind</span>: HTTPRoute
+<span class="k">metadata</span>:
+  <span class="k">name</span>: cv-frontend
+  <span class="k">namespace</span>: cv
+<span class="k">spec</span>:
+  <span class="k">parentRefs</span>:
+    - <span class="k">name</span>: homelab-gateway
+      <span class="k">namespace</span>: envoy-gateway-system
+  <span class="k">hostnames</span>: [<span class="s">"cv.1ms.my"</span>]
+  <span class="k">rules</span>:
+    - <span class="k">backendRefs</span>:
+        - <span class="k">name</span>: cv-frontend
+          <span class="k">port</span>: <span class="n">80</span></code></pre>
+        </div>
+      </div>
+    </article>
 
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Observability</h3>
-                        <p class="company">Roadmap — designed, scheduled for the next iteration</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>A dedicated observability stack is planned and the larger 2 OCPU / 12 GB node (<code>10.0.1.135</code>) is reserved to host it. The intended components:</p>
-                    <ul>
-                        <li><strong>Prometheus</strong> via <code>kube-prometheus-stack</code> — scrapes node-exporter, kubelet, Envoy Gateway, External Secrets Operator, Flux controllers and application <code>/metrics</code> endpoints.</li>
-                        <li><strong>Grafana</strong> — dashboards for cluster health, ingress (request rate, p50/p95/p99 latency, error rate) and application metrics (shortens per second, redirects per second).</li>
-                        <li><strong>Loki</strong> — central log aggregation, with Grafana Alloy as the collection agent.</li>
-                        <li><strong>Alertmanager</strong> — alert routing through OCI Email Delivery.</li>
-                    </ul>
-                    <p>Until the stack is in place, operational visibility is provided through <code>kubectl logs</code>, k9s, Cloudflare's HTTP analytics for edge metrics, and the OCI Console for resource-level monitoring.</p>
-                </div>
-            </article>
+    <!-- 4. CLOUDFLARE -->
+    <article class="acc" id="acc-cf">
+      <div class="acc-head">
+        <span class="acc-tag">CLOUDFLARE</span>
+        <div class="acc-titles">
+          <h3>DNS, edge and tunnel — Cloudflare</h3>
+          <div class="acc-meta">Domain on Dynadot · DNS &amp; proxy on Cloudflare · 4 tunnel connectors</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <ul>
+          <li><strong>Registrar</strong> — the <code>1ms.my</code> domain is registered with <strong>Dynadot</strong>. The Dynadot domain has its nameservers delegated to Cloudflare, so Cloudflare hosts the authoritative DNS zone.</li>
+          <li><strong>DNS</strong> — zone <code>1ms.my</code> on Cloudflare. Each subdomain (apex, <code>cv</code>, <code>infra</code>) is a CNAME pointing at the homelab tunnel. Cloudflare creates these records automatically when public hostnames are added to the tunnel.</li>
+          <li><strong>Proxy (orange-cloud)</strong> — all traffic terminates TLS at Cloudflare's edge. This provides automatic TLS certificates, DDoS protection, edge caching of static assets, and HTTP analytics.</li>
+          <li><strong>Cloudflare Tunnel</strong> — <code>cloudflared</code> runs as a 2-replica Deployment inside the cluster and establishes outbound TLS connections to Cloudflare's edge. The tunnel currently reports HEALTHY with 4 connectors across Tel Aviv and Marseille edge POPs.</li>
+          <li><strong>Tunnel hostnames</strong> route each domain to the in-cluster Envoy data-plane Service over HTTP. The cluster never accepts unsolicited inbound traffic from the public internet.</li>
+        </ul>
+        <p>The DNS zone configuration:</p>
+        <figure>
+          <img src="/img/cloudflare-dns.png" alt="Cloudflare DNS Records for 1ms.my showing apex, cv and infra CNAMEs proxied through Cloudflare" loading="lazy" />
+          <figcaption>Cloudflare DNS Records for <code>1ms.my</code> — all proxied (orange-cloud).</figcaption>
+        </figure>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">cloudflared HelmRelease (Flux)</span>
+            <span class="placeholder-tag">replace with real from personal-k8s</span>
+          </div>
+<pre class="code"><code><span class="c"># TODO: paste actual content from personal-k8s repo</span>
+<span class="k">apiVersion</span>: helm.toolkit.fluxcd.io/v2
+<span class="k">kind</span>: HelmRelease
+<span class="k">metadata</span>:
+  <span class="k">name</span>: cloudflared
+  <span class="k">namespace</span>: cloudflare
+<span class="k">spec</span>:
+  <span class="k">interval</span>: <span class="n">10m</span>
+  <span class="k">chart</span>:
+    <span class="k">spec</span>:
+      <span class="k">chart</span>: cloudflare-tunnel
+      <span class="k">version</span>: <span class="s">"x.y.z"</span>
+      <span class="k">sourceRef</span>: { <span class="k">kind</span>: HelmRepository, <span class="k">name</span>: cloudflare }
+  <span class="k">values</span>:
+    <span class="k">replicaCount</span>: <span class="n">2</span>
+    <span class="k">cloudflare</span>:
+      <span class="k">tunnelName</span>: homelab-tunnel
+      <span class="k">existingSecret</span>: cloudflared-tunnel-token  <span class="c"># synced by ESO</span></code></pre>
+        </div>
+      </div>
+    </article>
 
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Repositories — multi-repository strategy</h3>
-                        <p class="company">Five public repositories · one per concern · modeled on microservices</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <p>The platform is intentionally split across <strong>five public repositories</strong> rather than a single monorepo. Each repository owns one concern: it has its own CI/CD workflow, its own container image, and is rolled out independently by Flux Image Automation. This structure deliberately models a real microservices platform, where each service team owns a repository and the platform team owns the GitOps cluster repository.</p>
-                    <ul>
-                        <li><strong><a href="https://github.com/AaronShemtov/urlshortener-backend" target="_blank" rel="noopener">AaronShemtov/urlshortener-backend</a></strong> — Go service running in writer or reader mode, selected by environment variable. SODA REST client, distroless image.</li>
-                        <li><strong><a href="https://github.com/AaronShemtov/urlshortener-frontend" target="_blank" rel="noopener">AaronShemtov/urlshortener-frontend</a></strong> — static HTML, CSS and JavaScript form, served by nginx-unprivileged.</li>
-                        <li><strong><a href="https://github.com/AaronShemtov/cv-frontend" target="_blank" rel="noopener">AaronShemtov/cv-frontend</a></strong> — the CV site at cv.1ms.my.</li>
-                        <li><strong><a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener">AaronShemtov/infra-frontend</a></strong> — this page.</li>
-                        <li><strong><a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener">AaronShemtov/personal-k8s</a></strong> — the GitOps source of truth. Contains every Flux Kustomization, HelmRelease and Kubernetes manifest reconciled against the cluster.</li>
-                    </ul>
-                </div>
-            </article>
+    <!-- 5. GITOPS FLUX -->
+    <article class="acc" id="acc-flux">
+      <div class="acc-head">
+        <span class="acc-tag">FLUX</span>
+        <div class="acc-titles">
+          <h3>GitOps — Flux</h3>
+          <div class="acc-meta">Flux v2.6.4 · 6 controllers · Image Automation closes the loop</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>The cluster's desired state is declared entirely in the <a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener"><strong>AaronShemtov/personal-k8s</strong></a> repository. Flux reconciles the cluster against this repository every minute. The repository is the single source of truth — there is no production change that is not first a Git commit.</p>
+        <p>Six Flux controllers run in the <code>flux-system</code> namespace:</p>
+        <ul>
+          <li><code>source-controller</code> — pulls Git, OCI and Helm sources.</li>
+          <li><code>kustomize-controller</code> — applies Kustomize overlays.</li>
+          <li><code>helm-controller</code> — reconciles HelmReleases.</li>
+          <li><code>notification-controller</code> — emits alerts and receives webhooks.</li>
+          <li><code>image-reflector-controller</code> — scans container registries for new tags.</li>
+          <li><code>image-automation-controller</code> — commits image tag updates back to Git.</li>
+        </ul>
+        <p>Two root Kustomizations layer the cluster:</p>
+        <ul>
+          <li><code>infrastructure</code> — applies everything under <code>./infrastructure/</code> (Gateway API CRDs, Envoy Gateway, External Secrets Operator, cloudflared, image-automation, metrics-server).</li>
+          <li><code>applications</code> — applies everything under <code>./applications/</code> (urlshortener, cv, infra). Depends on <code>infrastructure</code> being reconciled first.</li>
+        </ul>
+        <p>The Git connection uses SSH with a write-enabled deploy key. The same key Flux uses to <em>pull</em> manifests is reused to <em>push</em> image tag updates produced by the Image Automation pipeline.</p>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">Root Kustomizations</span>
+            <span class="placeholder-tag">replace with real from personal-k8s</span>
+          </div>
+<pre class="code"><code><span class="c"># TODO: paste actual content from personal-k8s repo</span>
+<span class="k">apiVersion</span>: kustomize.toolkit.fluxcd.io/v1
+<span class="k">kind</span>: Kustomization
+<span class="k">metadata</span>: { <span class="k">name</span>: infrastructure, <span class="k">namespace</span>: flux-system }
+<span class="k">spec</span>:
+  <span class="k">interval</span>: <span class="n">10m</span>
+  <span class="k">path</span>: ./infrastructure
+  <span class="k">prune</span>: <span class="p">true</span>
+  <span class="k">sourceRef</span>: { <span class="k">kind</span>: GitRepository, <span class="k">name</span>: flux-system }
+---
+<span class="k">apiVersion</span>: kustomize.toolkit.fluxcd.io/v1
+<span class="k">kind</span>: Kustomization
+<span class="k">metadata</span>: { <span class="k">name</span>: applications, <span class="k">namespace</span>: flux-system }
+<span class="k">spec</span>:
+  <span class="k">interval</span>: <span class="n">5m</span>
+  <span class="k">path</span>: ./applications
+  <span class="k">prune</span>: <span class="p">true</span>
+  <span class="k">dependsOn</span>: [{ <span class="k">name</span>: infrastructure }]
+  <span class="k">sourceRef</span>: { <span class="k">kind</span>: GitRepository, <span class="k">name</span>: flux-system }</code></pre>
+        </div>
+      </div>
+    </article>
 
-            <article class="experience expanded">
-                <header class="experience-header" tabindex="0" role="button" aria-expanded="true">
-                    <div>
-                        <h3>Design decisions</h3>
-                        <p class="company">Why these choices, and the alternatives rejected</p>
-                    </div>
-                    <span class="chevron" aria-hidden="true">▼</span>
-                </header>
-                <div class="experience-body">
-                    <ul>
-                        <li><strong>Cloudflare Tunnel instead of an OCI Load Balancer</strong> — eliminates inbound public IPs entirely. TLS termination, DDoS protection and edge caching are handled by Cloudflare. The cluster has no exposed ports.</li>
-                        <li><strong>Envoy Gateway over nginx-ingress</strong> — adopts the standardised Kubernetes Gateway API, which supports advanced traffic policies (rate limiting, JWT validation, external authorisation) natively.</li>
-                        <li><strong>Flux over Argo CD</strong> — Image Automation is a first-class capability of Flux, removing the need for a separate Argo Image Updater. The operator model is simple and the Kustomization layering supports multi-tenancy without additional tooling.</li>
-                        <li><strong>Multi-repository, not monorepo</strong> — independent CI/CD, image-level versioning, clear ownership boundaries. Models a real microservices platform.</li>
-                        <li><strong><code>distroless/static:nonroot</code> base for Go services</strong> — final image is small, has no shell, no package manager, no libc, and runs as a non-root user by default. Reduces attack surface and image size simultaneously.</li>
-                        <li><strong><code>nginx-unprivileged</code> for static sites</strong> — runs as UID 101, passes the restricted Pod Security Standard out of the box.</li>
-                        <li><strong>ARM64 (Ampere A1) workloads end-to-end</strong> — matches the worker node architecture, removing QEMU emulation at both build time and runtime.</li>
-                        <li><strong>External Secrets Operator with OCI Vault</strong> — managed vault with native rotation and IAM audit; no secret material is ever committed to Git.</li>
-                        <li><strong>Managed Autonomous Database over in-cluster Postgres</strong> — frees the cluster's block-volume budget for the upcoming observability stack and removes operational burden (backups, upgrades, monitoring).</li>
-                        <li><strong>Writer / reader split for the URL shortener</strong> — aligns with the read-heavy traffic profile and enables independent scaling of the read path.</li>
-                        <li><strong>SODA REST instead of a native Oracle DB driver</strong> — keeps the Go service's container image distroless and CGO-free, with no client library or wallet mount.</li>
-                        <li><strong>No public ingress, no static credentials</strong> — every external connection enters through the outbound Cloudflare Tunnel; every cloud credential is short-lived and scoped via Instance Principal.</li>
-                    </ul>
-                </div>
-            </article>
+    <!-- 6. CI/CD PIPELINE -->
+    <article class="acc" id="acc-cicd">
+      <div class="acc-head">
+        <span class="acc-tag">CI/CD</span>
+        <div class="acc-titles">
+          <h3>CI/CD pipeline — closed-loop GitOps</h3>
+          <div class="acc-meta">GitHub Actions → OCIR → Flux Image Automation → cluster</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>A push to any service repository propagates to running pods automatically. The diagram below shows the full loop:</p>
+        <div class="diagram-wrap">
+          <svg class="diagram" viewBox="0 0 760 920" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CI/CD GitOps loop diagram">
+            <defs>
+              <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6"></path>
+              </marker>
+            </defs>
+            <rect x="280" y="15" width="200" height="50" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+            <text x="380" y="45" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Developer</text>
+            <line x1="380" y1="65" x2="380" y2="105" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)"></line>
+            <text x="395" y="90" font-size="11" fill="currentColor" opacity="0.7">git push</text>
+            <rect x="180" y="110" width="400" height="65" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+            <text x="380" y="135" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Service repository</text>
+            <text x="380" y="157" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">urlshortener-backend · urlshortener-frontend</text>
+            <text x="380" y="172" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">cv-frontend · infra-frontend</text>
+            <line x1="380" y1="175" x2="380" y2="215" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)"></line>
+            <text x="395" y="200" font-size="11" fill="currentColor" opacity="0.7">workflow trigger</text>
+            <rect x="180" y="220" width="400" height="80" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+            <text x="380" y="245" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">GitHub Actions</text>
+            <text x="380" y="267" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">build linux/arm64 multi-tag image</text>
+            <text x="380" y="287" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">tags: 0.0.&lt;run_number&gt; · &lt;short-sha&gt; · latest</text>
+            <line x1="380" y1="300" x2="380" y2="340" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)"></line>
+            <text x="395" y="325" font-size="11" fill="currentColor" opacity="0.7">docker push</text>
+            <rect x="220" y="345" width="320" height="60" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+            <text x="380" y="370" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">OCIR</text>
+            <text x="380" y="392" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">il-jerusalem-1.ocir.io</text>
+            <line x1="380" y1="405" x2="380" y2="450" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)"></line>
+            <text x="395" y="430" font-size="11" fill="currentColor" opacity="0.7">scan every 2 min</text>
+            <rect x="120" y="455" width="520" height="105" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+            <text x="380" y="480" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Flux Image Automation</text>
+            <text x="380" y="502" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">ImageRepository → scans OCIR</text>
+            <text x="380" y="520" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">ImagePolicy → selects highest semver tag</text>
+            <text x="380" y="540" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">ImageUpdateAutomation → commits update</text>
+            <line x1="380" y1="560" x2="380" y2="605" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)"></line>
+            <text x="395" y="585" font-size="11" fill="currentColor" opacity="0.7">commit via SSH</text>
+            <rect x="180" y="610" width="400" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+            <text x="380" y="635" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">personal-k8s repository</text>
+            <text x="380" y="657" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">GitOps source of truth · auto-commit by Flux</text>
+            <line x1="380" y1="675" x2="380" y2="715" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)"></line>
+            <text x="395" y="700" font-size="11" fill="currentColor" opacity="0.7">poll every 1 min</text>
+            <rect x="120" y="720" width="520" height="80" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+            <text x="380" y="745" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Flux on the cluster</text>
+            <text x="380" y="767" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">source-controller pulls · kustomize-controller applies</text>
+            <text x="380" y="785" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">Deployment image tag updated</text>
+            <line x1="380" y1="800" x2="380" y2="840" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)"></line>
+            <text x="395" y="825" font-size="11" fill="currentColor" opacity="0.7">rolling update</text>
+            <rect x="220" y="845" width="320" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+            <text x="380" y="870" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">New pods running</text>
+            <text x="380" y="892" font-size="11.5" fill="currentColor" opacity="0.7" text-anchor="middle">≈ 3 minutes after git push</text>
+          </svg>
+        </div>
+        <p>Why GitHub Actions: it integrates directly with the source repository, provides build caches per repo, and runs at no additional cost on this scale. The OCI Ampere A1 compute pool is fully allocated to the OKE worker nodes, so an in-tenancy CI runner is not an option here.</p>
+        <p>Builds target <code>linux/arm64</code> only, matching the Ampere A1 worker node architecture. The build itself runs natively on the GitHub-hosted amd64 runner; only the binary is cross-compiled via <code>docker buildx</code>. This avoids QEMU emulation entirely.</p>
+        <p>The four private OCIR repositories holding the images:</p>
+        <figure>
+          <img src="/img/ocir.png" alt="OCI Container Registry showing infra-frontend, cv-frontend, urlshortener-frontend, urlshortener-backend repositories with image counts and sizes" loading="lazy" />
+          <figcaption>OCI Container Registry — four private repositories, one per service.</figcaption>
+        </figure>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">GitHub Actions workflow (build → push to OCIR)</span>
+            <span class="placeholder-tag">replace with real from service repo</span>
+          </div>
+<pre class="code"><code><span class="c"># TODO: paste actual .github/workflows/build.yml from urlshortener-backend</span>
+<span class="k">name</span>: build-and-push
+<span class="k">on</span>: { <span class="k">push</span>: { <span class="k">branches</span>: [main] } }
+<span class="k">jobs</span>:
+  <span class="k">build</span>:
+    <span class="k">runs-on</span>: ubuntu-latest
+    <span class="k">steps</span>:
+      - <span class="k">uses</span>: actions/checkout@v4
+      - <span class="k">uses</span>: docker/setup-buildx-action@v3
+      - <span class="k">name</span>: Login to OCIR
+        <span class="k">uses</span>: docker/login-action@v3
+        <span class="k">with</span>:
+          <span class="k">registry</span>: il-jerusalem-1.ocir.io
+          <span class="k">username</span>: ${{ secrets.OCIR_USER }}
+          <span class="k">password</span>: ${{ secrets.OCIR_TOKEN }}
+      - <span class="k">uses</span>: docker/build-push-action@v5
+        <span class="k">with</span>:
+          <span class="k">platforms</span>: linux/arm64
+          <span class="k">push</span>: <span class="p">true</span>
+          <span class="k">tags</span>: |
+            il-jerusalem-1.ocir.io/&lt;tenancy&gt;/urlshortener-backend:0.0.${{ github.run_number }}
+            il-jerusalem-1.ocir.io/&lt;tenancy&gt;/urlshortener-backend:${{ github.sha }}
+            il-jerusalem-1.ocir.io/&lt;tenancy&gt;/urlshortener-backend:latest</code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">Flux ImagePolicy + ImageUpdateAutomation</span>
+            <span class="placeholder-tag">replace with real from personal-k8s</span>
+          </div>
+<pre class="code"><code><span class="c"># TODO: paste actual content from personal-k8s repo</span>
+<span class="k">apiVersion</span>: image.toolkit.fluxcd.io/v1beta2
+<span class="k">kind</span>: ImagePolicy
+<span class="k">metadata</span>: { <span class="k">name</span>: writer, <span class="k">namespace</span>: flux-system }
+<span class="k">spec</span>:
+  <span class="k">imageRepositoryRef</span>: { <span class="k">name</span>: urlshortener-backend }
+  <span class="k">policy</span>:
+    <span class="k">semver</span>: { <span class="k">range</span>: <span class="s">"&gt;=0.0.0"</span> }
+---
+<span class="k">apiVersion</span>: image.toolkit.fluxcd.io/v1beta2
+<span class="k">kind</span>: ImageUpdateAutomation
+<span class="k">metadata</span>: { <span class="k">name</span>: applications, <span class="k">namespace</span>: flux-system }
+<span class="k">spec</span>:
+  <span class="k">interval</span>: <span class="n">2m</span>
+  <span class="k">sourceRef</span>: { <span class="k">kind</span>: GitRepository, <span class="k">name</span>: flux-system }
+  <span class="k">git</span>:
+    <span class="k">commit</span>:
+      <span class="k">author</span>: { <span class="k">name</span>: flux, <span class="k">email</span>: flux@1ms.my }
+    <span class="k">push</span>: { <span class="k">branch</span>: main }
+  <span class="k">update</span>: { <span class="k">path</span>: ./applications, <span class="k">strategy</span>: Setters }</code></pre>
+        </div>
+      </div>
+    </article>
 
-        </section>
+    <!-- 7. SECRETS -->
+    <article class="acc" id="acc-sec">
+      <div class="acc-head">
+        <span class="acc-tag">SECRETS</span>
+        <div class="acc-titles">
+          <h3>Secrets management</h3>
+          <div class="acc-meta">External Secrets Operator · OCI Vault · Instance Principal</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p><strong>External Secrets Operator (ESO)</strong> reconciles Kubernetes <code>Secret</code> resources from OCI Vault on a schedule. A single <code>ClusterSecretStore</code> named <code>oci-vault</code> is configured with <strong>Instance Principal</strong> authentication — the OKE worker node identity is granted Vault read access via an OCI Dynamic Group and Policy. No static cloud credentials are stored anywhere in the cluster or in Git.</p>
+        <p>Vault secrets currently in use:</p>
+        <ul>
+          <li><code>cloudflared-tunnel-token</code> — the token authorising the Cloudflare Tunnel.</li>
+          <li><code>ocir-auth-token</code> — pull credentials for OCIR, materialised as a <code>dockerconfigjson</code> Secret in every application namespace.</li>
+          <li><code>adb-admin-password</code> — Autonomous Database password, consumed by the writer and reader pods as the <code>ADB_PASSWORD</code> environment variable.</li>
+        </ul>
+        <p>Every application namespace contains an <code>ExternalSecret</code> resource referencing the relevant Vault key. Rotation is performed in Vault and propagates within <code>refreshInterval: 1h</code>. No secret material is committed to Git at any point.</p>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">ClusterSecretStore + ExternalSecret</span>
+            <span class="placeholder-tag">replace with real from personal-k8s</span>
+          </div>
+<pre class="code"><code><span class="c"># TODO: paste actual content from personal-k8s repo</span>
+<span class="k">apiVersion</span>: external-secrets.io/v1beta1
+<span class="k">kind</span>: ClusterSecretStore
+<span class="k">metadata</span>: { <span class="k">name</span>: oci-vault }
+<span class="k">spec</span>:
+  <span class="k">provider</span>:
+    <span class="k">oracle</span>:
+      <span class="k">region</span>: il-jerusalem-1
+      <span class="k">vault</span>: <span class="s">"ocid1.vault.oc1.il-jerusalem-1...."</span>
+      <span class="k">principalType</span>: InstancePrincipal
+---
+<span class="k">apiVersion</span>: external-secrets.io/v1beta1
+<span class="k">kind</span>: ExternalSecret
+<span class="k">metadata</span>: { <span class="k">name</span>: adb-credentials, <span class="k">namespace</span>: urlshortener }
+<span class="k">spec</span>:
+  <span class="k">refreshInterval</span>: <span class="n">1h</span>
+  <span class="k">secretStoreRef</span>: { <span class="k">kind</span>: ClusterSecretStore, <span class="k">name</span>: oci-vault }
+  <span class="k">target</span>: { <span class="k">name</span>: adb-credentials, <span class="k">creationPolicy</span>: Owner }
+  <span class="k">data</span>:
+    - <span class="k">secretKey</span>: ADB_PASSWORD
+      <span class="k">remoteRef</span>: { <span class="k">key</span>: <span class="s">adb-admin-password</span> }</code></pre>
+        </div>
+      </div>
+    </article>
 
-        <footer class="footer">
-            <p>
-                <a href="https://1ms.my">← 1ms.my</a>
-                &nbsp;·&nbsp;
-                <a href="https://cv.1ms.my">cv.1ms.my →</a>
-            </p>
-            <p style="margin-top:0.5rem; font-size:0.82rem;">
-                Source: <a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener">github.com/AaronShemtov/infra-frontend</a>
-            </p>
-        </footer>
-    </main>
+    <!-- 8. DATA LAYER -->
+    <article class="acc" id="acc-data">
+      <div class="acc-head">
+        <span class="acc-tag">DATABASE</span>
+        <div class="acc-titles">
+          <h3>Data layer — Autonomous JSON Database</h3>
+          <div class="acc-meta">Managed document store · SODA REST API over HTTPS</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>The URL shortener persists its data in an <strong>Oracle Autonomous Database</strong> provisioned with the JSON workload type, in the same region as the cluster. The backend communicates with the database exclusively through the <strong>SODA REST API</strong> — standard HTTPS with HTTP Basic Authentication. The Go service therefore uses only the standard library's <code>net/http</code>; no Oracle client libraries, no mTLS wallet, no CGO. The resulting container image remains distroless, static, and non-root.</p>
+        <p>The schema is a single SODA collection named <code>urls</code>, with VARCHAR2 client-assigned keys (the short codes). Document shape:</p>
+<pre class="code" style="border-radius:6px; border:1px solid var(--line)"><code>{
+  <span class="k">"long_url"</span>:   <span class="s">"https://..."</span>,
+  <span class="k">"created_at"</span>: <span class="s">"ISO-8601 timestamp"</span>
+}</code></pre>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">Sample writer request (SODA REST · curl)</span>
+            <span class="placeholder-tag">replace ADB URL + auth with real</span>
+          </div>
+<pre class="code"><code><span class="c"># writer pod creates a new short code</span>
+curl -X PUT \
+  -u <span class="s">"ADMIN:$ADB_PASSWORD"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  <span class="s">"https://&lt;ADB-ORDS-HOST&gt;/ords/admin/soda/latest/urls/abc123"</span> \
+  -d <span class="s">'{"long_url":"https://example.com","created_at":"2026-05-26T18:00:00Z"}'</span>
 
-    <script src="/script.js"></script>
+<span class="c"># reader pod resolves it</span>
+curl -u <span class="s">"ADMIN:$ADB_PASSWORD"</span> \
+  <span class="s">"https://&lt;ADB-ORDS-HOST&gt;/ords/admin/soda/latest/urls/abc123"</span></code></pre>
+        </div>
+      </div>
+    </article>
+
+    <!-- 9. APPLICATION ARCH -->
+    <article class="acc" id="acc-app">
+      <div class="acc-head">
+        <span class="acc-tag">SHORTENER</span>
+        <div class="acc-titles">
+          <h3>Application architecture — URL Shortener</h3>
+          <div class="acc-meta">Writer / reader / frontend split · independent scaling</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>The URL shortener is intentionally split into <strong>three independent Deployments</strong> in the <code>urlshortener</code> namespace. The split is a deliberate design decision aligned with the read/write asymmetry of a real shortener service.</p>
+        <ul>
+          <li><strong>writer (2 replicas)</strong> — handles <code>POST /shorten</code> and <code>POST /createcustom</code>. Generates the short code, writes the document to the Autonomous Database via SODA REST <code>PUT</code>, and returns the short URL to the caller. Started in <code>MODE=writer</code> via environment variable; the writer image registers only POST handlers.</li>
+          <li><strong>reader (2 replicas)</strong> — handles <code>GET /{6-char-code}</code>. Reads the document from the database and returns a 301 redirect to the long URL. Started in <code>MODE=reader</code>.</li>
+          <li><strong>frontend (2 nginx replicas)</strong> — serves the static single-page application that submits requests to the writer endpoint.</li>
+        </ul>
+        <p><strong>Why split writer from reader?</strong> A real URL shortener serves orders of magnitude more reads than writes — a single short link can be shared on social media and receive thousands of redirects per second while the write-side load remains effectively unchanged. By running the read path as a separate Deployment, the reader can scale horizontally (Horizontal Pod Autoscaler on CPU or request-rate) without provisioning additional writer capacity. The writer retains its small, predictable footprint. The two paths can also be deployed, drained, and rolled back independently — useful when migrating the storage backend or rolling out cache changes that affect only the read side.</p>
+        <p><strong>Why the multi-Deployment, multi-namespace, multi-repository layout overall?</strong> The platform is structured to model a <strong>microservices architecture</strong>: each user-facing capability is its own Deployment (often its own namespace and source repository), with its own image, its own CI/CD pipeline, its own resource budget, and its own scaling profile. This mirrors how real production platforms are organised.</p>
+      </div>
+    </article>
+
+    <!-- 10. POD INVENTORY -->
+    <article class="acc" id="acc-pods">
+      <div class="acc-head">
+        <span class="acc-tag">PODS</span>
+        <div class="acc-titles">
+          <h3>Cluster pod inventory</h3>
+          <div class="acc-meta">Live view from k9s · ~46 pods total</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>The cluster currently runs around 46 pods distributed across the namespaces below. The pod count includes platform components (Flux controllers, Envoy Gateway, External Secrets Operator, Cloudflare Tunnel), node-local DaemonSets (CNI, CSI, kube-proxy, OKE node observability agents), and application workloads.</p>
+        <p>Application namespaces:</p>
+        <ul>
+          <li><code>urlshortener</code> — writer × 2, reader × 2, frontend × 2 (6 pods)</li>
+          <li><code>cv</code> — cv-frontend × 2</li>
+          <li><code>infra</code> — infra-frontend × 2</li>
+        </ul>
+        <p>Platform namespaces:</p>
+        <ul>
+          <li><code>flux-system</code> — 6 Flux controllers</li>
+          <li><code>envoy-gateway-system</code> — Envoy control plane and data plane</li>
+          <li><code>external-secrets</code> — ESO controller, webhook, cert-controller</li>
+          <li><code>cloudflare</code> — cloudflared × 2</li>
+          <li><code>kube-system</code> — CoreDNS, OCI CSI, OCI VCN CNI, kube-proxy, metrics-server, OKE node observability and problem-detection agents</li>
+        </ul>
+        <figure>
+          <img src="/img/pods-1.png" alt="k9s screenshot of cluster pods — flux-system, cv, envoy-gateway-system, external-secrets, infra namespaces" loading="lazy" />
+          <figcaption>Cluster pods — Flux, Envoy Gateway, External Secrets, application namespaces (part 1).</figcaption>
+        </figure>
+        <figure>
+          <img src="/img/pods-2.png" alt="k9s screenshot of cluster pods — kube-system, urlshortener namespace, OKE node agents" loading="lazy" />
+          <figcaption>Cluster pods — kube-system (CoreDNS, CSI, CNI, kube-proxy, OKE agents) and the urlshortener workloads (part 2).</figcaption>
+        </figure>
+      </div>
+    </article>
+
+    <!-- 11. OBSERVABILITY -->
+    <article class="acc" id="acc-obs">
+      <div class="acc-head">
+        <span class="acc-tag">OBS</span>
+        <div class="acc-titles">
+          <h3>Observability</h3>
+          <div class="acc-meta">Roadmap — designed, scheduled for the next iteration</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <div class="proto-banner"><b>roadmap</b> the observability stack is designed and node-reserved. Not deployed yet.</div>
+        <p>A dedicated observability stack is planned and the larger 2 OCPU / 12 GB node (<code>10.0.1.135</code>) is reserved to host it. The intended components:</p>
+        <ul>
+          <li><strong>Prometheus</strong> via <code>kube-prometheus-stack</code> — scrapes node-exporter, kubelet, Envoy Gateway, External Secrets Operator, Flux controllers and application <code>/metrics</code> endpoints.</li>
+          <li><strong>Grafana</strong> — dashboards for cluster health, ingress (request rate, p50/p95/p99 latency, error rate) and application metrics (shortens per second, redirects per second).</li>
+          <li><strong>Loki</strong> — central log aggregation, with Grafana Alloy as the collection agent.</li>
+          <li><strong>Alertmanager</strong> — alert routing through OCI Email Delivery.</li>
+        </ul>
+        <p style="margin-top:18px;"><a href="#slo">▸ see §04 for the SLO targets these alerts will fire on</a></p>
+        <p>Until the stack is in place, operational visibility is provided through <code>kubectl logs</code>, k9s, Cloudflare's HTTP analytics for edge metrics, and the OCI Console for resource-level monitoring.</p>
+      </div>
+    </article>
+
+    <!-- 12. REPOSITORIES -->
+    <article class="acc" id="acc-repos">
+      <div class="acc-head">
+        <span class="acc-tag">REPOS</span>
+        <div class="acc-titles">
+          <h3>Repositories — multi-repository strategy</h3>
+          <div class="acc-meta">Five public repositories · one per concern · modeled on microservices</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>The platform is intentionally split across <strong>five public repositories</strong> rather than a single monorepo. Each repository owns one concern: it has its own CI/CD workflow, its own container image, and is rolled out independently by Flux Image Automation. This structure deliberately models a real microservices platform, where each service team owns a repository and the platform team owns the GitOps cluster repository.</p>
+        <ul>
+          <li><strong><a href="https://github.com/AaronShemtov/urlshortener-backend" target="_blank" rel="noopener">AaronShemtov/urlshortener-backend</a></strong> — Go service running in writer or reader mode, selected by environment variable. SODA REST client, distroless image.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/urlshortener-frontend" target="_blank" rel="noopener">AaronShemtov/urlshortener-frontend</a></strong> — static HTML, CSS and JavaScript form, served by nginx-unprivileged.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/cv-frontend" target="_blank" rel="noopener">AaronShemtov/cv-frontend</a></strong> — the CV site at cv.1ms.my.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener">AaronShemtov/infra-frontend</a></strong> — this page.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener">AaronShemtov/personal-k8s</a></strong> — the GitOps source of truth. Contains every Flux Kustomization, HelmRelease and Kubernetes manifest reconciled against the cluster.</li>
+        </ul>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- DESIGN DECISIONS -->
+  <section class="block" id="decisions">
+    <div class="sec-head">
+      <span class="sec-num">03 ·</span>
+      <h2 class="sec-title">Design decisions</h2>
+    </div>
+    <p class="sec-sub">Why these choices, and the alternatives rejected.</p>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>Platform &amp; networking</h4>
+        <ul>
+          <li><strong>Cloudflare Tunnel instead of an OCI Load Balancer</strong><span class="why">eliminates inbound public IPs entirely. TLS termination, DDoS protection and edge caching are handled by Cloudflare. The cluster has no exposed ports.</span></li>
+          <li><strong>Envoy Gateway over nginx-ingress</strong><span class="why">adopts the standardised Kubernetes Gateway API, which supports advanced traffic policies (rate limiting, JWT validation, external authorisation) natively.</span></li>
+          <li><strong>Flux over Argo CD</strong><span class="why">Image Automation is a first-class capability of Flux, removing the need for a separate Argo Image Updater. The operator model is simple and the Kustomization layering supports multi-tenancy without additional tooling.</span></li>
+          <li><strong>Multi-repository, not monorepo</strong><span class="why">independent CI/CD, image-level versioning, clear ownership boundaries. Models a real microservices platform.</span></li>
+          <li><strong>ARM64 (Ampere A1) workloads end-to-end</strong><span class="why">matches the worker node architecture, removing QEMU emulation at both build time and runtime.</span></li>
+          <li><strong>No public ingress, no static credentials</strong><span class="why">every external connection enters through the outbound Cloudflare Tunnel; every cloud credential is short-lived and scoped via Instance Principal.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Images, secrets &amp; data</h4>
+        <ul>
+          <li><strong><code>distroless/static:nonroot</code> base for Go services</strong><span class="why">final image is small, has no shell, no package manager, no libc, and runs as a non-root user by default. Reduces attack surface and image size simultaneously.</span></li>
+          <li><strong><code>nginx-unprivileged</code> for static sites</strong><span class="why">runs as UID 101, passes the restricted Pod Security Standard out of the box.</span></li>
+          <li><strong>External Secrets Operator with OCI Vault</strong><span class="why">managed vault with native rotation and IAM audit; no secret material is ever committed to Git.</span></li>
+          <li><strong>Managed Autonomous Database over in-cluster Postgres</strong><span class="why">frees the cluster's block-volume budget for the upcoming observability stack and removes operational burden (backups, upgrades, monitoring).</span></li>
+          <li><strong>Writer / reader split for the URL shortener</strong><span class="why">aligns with the read-heavy traffic profile and enables independent scaling of the read path.</span></li>
+          <li><strong>SODA REST instead of a native Oracle DB driver</strong><span class="why">keeps the Go service's container image distroless and CGO-free, with no client library or wallet mount.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLO / FUTURE STATE -->
+  <section class="block" id="slo">
+    <div class="sec-head">
+      <span class="sec-num">04 ·</span>
+      <h2 class="sec-title">Observability — SLO targets <span style="color:var(--mute); font-weight:400; font-size:0.65em;">prototype</span></h2>
+    </div>
+    <p class="sec-sub">A prototype of what the observability stack from <a href="#acc-obs">§02 · obs</a> will measure once it ships. The targets below are committed; the <code>30d actual</code> column populates from Prometheus when the stack lands on the reserved node.</p>
+
+    <div class="proto-banner">
+      <b>prototype</b>
+      <span>this table defines targets — measured values will be auto-populated by Prometheus + Alertmanager. Currently no SLI is being collected; see §11 (Observability) roadmap.</span>
+    </div>
+
+    <table class="slo-table">
+      <thead><tr><th>service</th><th>SLI</th><th>target</th><th>30d actual</th><th>error budget</th><th>alerting (planned)</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="svc">1ms.my <span style="color:var(--mute);font-weight:400">/reader</span></td>
+          <td>availability · p95 &lt; 200ms</td>
+          <td>99.9 %</td>
+          <td class="pending">pending observability</td>
+          <td class="pending">43m / 30d</td>
+          <td>Alertmanager → Email · Telegram</td>
+        </tr>
+        <tr>
+          <td class="svc">1ms.my <span style="color:var(--mute);font-weight:400">/writer</span></td>
+          <td>availability · p95 &lt; 400ms</td>
+          <td>99.5 %</td>
+          <td class="pending">pending observability</td>
+          <td class="pending">3h 36m / 30d</td>
+          <td>Alertmanager → Email</td>
+        </tr>
+        <tr>
+          <td class="svc">cv.1ms.my</td>
+          <td>availability · static</td>
+          <td>99.9 %</td>
+          <td class="pending">pending observability</td>
+          <td class="pending">43m / 30d</td>
+          <td>Cloudflare healthchecks</td>
+        </tr>
+        <tr>
+          <td class="svc">infra.1ms.my</td>
+          <td>availability</td>
+          <td>99.0 %</td>
+          <td class="pending">pending observability</td>
+          <td class="pending">7h 12m / 30d</td>
+          <td>Cloudflare healthchecks</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="foot">
+    <div>
+      <span class="tag">built · operated · documented · monitored by one person.</span>
+      the same person you'd hire.
+    </div>
+    <div>
+      <a href="https://cv.1ms.my/">CV</a> · <a href="https://1ms.my/">1ms.my</a> · <a href="https://github.com/AaronShemtov/infra-frontend">source</a>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+  // theme toggle
+  var sun = document.getElementById('icon-sun');
+  var moon = document.getElementById('icon-moon');
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    if (t === 'dark') { sun.style.display = ''; moon.style.display = 'none'; }
+    else              { sun.style.display = 'none'; moon.style.display = ''; }
+    try { localStorage.setItem('theme', t); } catch(e){}
+  }
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+  document.getElementById('theme-btn').addEventListener('click', function(){
+    var cur = document.documentElement.getAttribute('data-theme') || 'light';
+    applyTheme(cur === 'light' ? 'dark' : 'light');
+  });
+
+  // accordions
+  document.querySelectorAll('.acc-head').forEach(function(h){
+    h.addEventListener('click', function(){ h.parentElement.classList.toggle('open'); });
+  });
+
+  // expand / collapse all
+  var bulk = document.getElementById('bulk-toggle');
+  if (bulk) {
+    bulk.addEventListener('click', function(){
+      var allOpen = document.querySelectorAll('.acc.open').length === document.querySelectorAll('.acc').length;
+      document.querySelectorAll('.acc').forEach(function(a){
+        if (allOpen) a.classList.remove('open');
+        else a.classList.add('open');
+      });
+      bulk.classList.toggle('all-open', !allOpen);
+      bulk.textContent = allOpen ? 'Expand all' : 'Collapse all';
+    });
+  }
+
+  // open accordion when ToC link clicked
+  document.querySelectorAll('.in-page-nav a').forEach(function(a){
+    a.addEventListener('click', function(e){
+      var id = a.getAttribute('href').slice(1);
+      var card = document.getElementById(id);
+      if (card){ card.classList.add('open'); }
+    });
+  });
+
+  // clickable diagram nodes → open matching accordion + scroll
+  document.querySelectorAll('.diagram g.clickable').forEach(function(g){
+    // add visible ↗ marker to top-right of group's primary rect
+    var rect = g.querySelector('rect');
+    if (rect) {
+      var x = parseFloat(rect.getAttribute('x')) + parseFloat(rect.getAttribute('width')) - 12;
+      var y = parseFloat(rect.getAttribute('y')) + 14;
+      var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', x); t.setAttribute('y', y);
+      t.setAttribute('font-size', '11');
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('class', 'click-mark');
+      t.textContent = '↗';
+      g.appendChild(t);
+    }
+    g.addEventListener('click', function(){
+      var tag = g.getAttribute('data-acc');
+      var card = null;
+      document.querySelectorAll('.acc').forEach(function(a){
+        var t = a.querySelector('.acc-tag');
+        if (t && t.textContent.trim() === tag) card = a;
+      });
+      if (card){
+        card.classList.add('open');
+        var top = card.getBoundingClientRect().top + window.pageYOffset - 20;
+        window.scrollTo({ top: top, behavior: 'smooth' });
+      }
+    });
+  });
+
+  // live status — best-effort fetch (CORS may block body read; we use no-cors)
+  document.querySelectorAll('.live-svc').forEach(function(svc){
+    var dot = svc.querySelector('.live-dot');
+    var url = dot.getAttribute('data-url');
+    var meta = svc.querySelector('[data-status]');
+    var t0 = performance.now();
+    fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
+      .then(function(){
+        var ms = Math.round(performance.now() - t0);
+        dot.classList.add('up');
+        meta.textContent = 'reachable · ' + ms + ' ms · ' + new Date().toISOString().slice(11,19) + 'Z';
+      })
+      .catch(function(){
+        dot.classList.add('down');
+        meta.textContent = 'unreachable · check failed';
+      });
+  });
+</script>
 </body>
 </html>
