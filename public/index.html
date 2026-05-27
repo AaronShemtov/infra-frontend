@@ -75,6 +75,7 @@
           <li><a href="https://cv.1ms.my/"><span class="dot-i"></span><span><span class="name">cv.1ms.my</span> <span class="desc">— CV with downloadable PDF</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li><span class="dot-i"></span><span><span class="name">infra.1ms.my</span> <span class="desc">— the page you are reading</span></span><span style="color:var(--accent);font-size:11px">YOU ARE HERE</span></li>
           <li><a href="https://pwd.1ms.my/"><span class="dot-i"></span><span><span class="name">pwd.1ms.my</span> <span class="desc">— client-side cryptographic password generator</span></span><span style="color:var(--mute)">↗</span></a></li>
+          <li><a href="https://grafana.1ms.my/"><span class="dot-i"></span><span><span class="name">grafana.1ms.my</span> <span class="desc">— public read-only observability dashboards</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li class="ext"><a href="https://github.com/AaronShemtov"><span class="gh-mark">⌘</span><span><span class="name">github.com/AaronShemtov</span> <span class="desc">— all source repositories</span></span><span style="color:var(--mute)">↗</span></a></li>
         </ul>
       </div>
@@ -118,7 +119,7 @@
     <div class="kpi">
       <div class="kpi-cell"><div class="kpi-num">5<span class="unit">public repos</span></div><div class="kpi-lbl">one per concern</div></div>
       <div class="kpi-cell"><div class="kpi-num">3<span class="unit">worker nodes</span></div><div class="kpi-lbl">Ampere A1 · ARM64</div></div>
-      <div class="kpi-cell"><div class="kpi-num">~46<span class="unit">pods</span></div><div class="kpi-lbl">app + platform + system</div></div>
+      <div class="kpi-cell"><div class="kpi-num">~63<span class="unit">pods</span></div><div class="kpi-lbl">app + platform + monitoring</div></div>
       <div class="kpi-cell"><div class="kpi-num">4<span class="unit">app ns</span></div><div class="kpi-lbl">tenant isolation</div></div>
       <div class="kpi-cell"><div class="kpi-num">6<span class="unit">controllers</span></div><div class="kpi-lbl">Flux v2.6.4</div></div>
       <div class="kpi-cell"><div class="kpi-num">4<span class="unit">connectors</span></div><div class="kpi-lbl">Cloudflare Tunnel · TLV + MRS</div></div>
@@ -160,6 +161,13 @@
           <div class="meta" data-status="pwd.1ms.my">checking…</div>
         </div>
       </div>
+      <div class="live-svc">
+        <span class="live-dot" data-url="https://grafana.1ms.my/"></span>
+        <div>
+          <div class="name">grafana.1ms.my</div>
+          <div class="meta" data-status="grafana.1ms.my">checking…</div>
+        </div>
+      </div>
     </div>
     <div class="live-disclaimer">
       ▸ live status is fetched from the public domains on page load. CORS may prevent the page from reading the response body — the dot turns green if the request completes without a network error, red otherwise. <span style="color:var(--warn)">[TODO]</span> wire to a real <code>/healthz</code> endpoint once observability stack ships.
@@ -174,10 +182,13 @@
     </div>
     <p class="sec-sub">Request flow from a user's browser down to the application pods and the managed database. <span class="diagram-hint">▸ click any highlighted node to jump to its section</span></p>
     <div class="diagram-wrap">
-      <svg class="diagram" viewBox="0 0 760 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Application architecture diagram">
+      <svg class="diagram" viewBox="0 0 760 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Application architecture diagram">
         <defs>
           <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
             <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6"></path>
+          </marker>
+          <marker id="arrow-dim" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#9ca3af"></path>
           </marker>
         </defs>
         <g class="clickable" data-acc="K8S">
@@ -206,46 +217,66 @@
         <text x="380" y="375" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Envoy Gateway</text>
         <text x="380" y="397" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">Gateway API · ClusterIP · hostname routing</text>
         </g>
-        <line x1="160" y1="415" x2="160" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
-        <line x1="380" y1="415" x2="380" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
-        <line x1="600" y1="415" x2="600" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
-        <text x="180" y="438" font-size="11" fill="currentColor" opacity="0.7">1ms.my</text>
-        <text x="400" y="438" font-size="11" fill="currentColor" opacity="0.7">cv.1ms.my</text>
-        <text x="620" y="438" font-size="11" fill="currentColor" opacity="0.7">infra.1ms.my</text>
+        <line x1="130" y1="415" x2="130" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="290" y1="415" x2="290" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="450" y1="415" x2="450" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="610" y1="415" x2="610" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <text x="145" y="438" font-size="10" fill="currentColor" opacity="0.7">1ms.my</text>
+        <text x="305" y="438" font-size="10" fill="currentColor" opacity="0.7">cv.1ms.my</text>
+        <text x="465" y="438" font-size="10" fill="currentColor" opacity="0.7">infra.1ms.my</text>
+        <text x="625" y="438" font-size="10" fill="currentColor" opacity="0.7">pwd · grafana</text>
         <g class="clickable" data-acc="SHORTENER">
-        <rect x="50" y="465" width="220" height="190" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
-        <text x="160" y="487" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">ns: urlshortener</text>
-        <rect x="65" y="500" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
-        <text x="160" y="520" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">writer × 2</text>
-        <text x="160" y="535" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">POST /shorten · /createcustom</text>
-        <rect x="65" y="548" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
-        <text x="160" y="568" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">reader × 2</text>
-        <text x="160" y="583" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">GET /{code} · scales independently</text>
-        <rect x="65" y="596" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
-        <text x="160" y="616" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">frontend × 2</text>
-        <text x="160" y="631" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">nginx · static HTML form</text>
+        <rect x="50" y="465" width="170" height="190" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="135" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: urlshortener</text>
+        <rect x="60" y="500" width="150" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="135" y="520" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">writer × 2</text>
+        <text x="135" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">POST /shorten</text>
+        <rect x="60" y="548" width="150" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="135" y="568" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">reader × 2</text>
+        <text x="135" y="583" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">GET /{code}</text>
+        <rect x="60" y="596" width="150" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="135" y="616" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">frontend × 2</text>
+        <text x="135" y="631" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">nginx · static</text>
         </g>
         <g class="clickable" data-acc="SHORTENER">
-        <rect x="290" y="465" width="180" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
-        <text x="380" y="487" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">ns: cv</text>
-        <rect x="305" y="500" width="150" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
-        <text x="380" y="520" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">cv-frontend × 2</text>
-        <text x="380" y="535" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">static CV page</text>
+        <rect x="230" y="465" width="130" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="295" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: cv</text>
+        <rect x="240" y="500" width="110" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="295" y="520" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">cv-frontend × 2</text>
+        <text x="295" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">static CV</text>
         </g>
         <g class="clickable" data-acc="SHORTENER">
-        <rect x="490" y="465" width="220" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
-        <text x="600" y="487" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">ns: infra</text>
-        <rect x="505" y="500" width="190" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
-        <text x="600" y="520" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle">infra-frontend × 2</text>
-        <text x="600" y="535" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">this page</text>
+        <rect x="370" y="465" width="130" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="435" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: infra</text>
+        <rect x="380" y="500" width="110" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="435" y="520" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">infra-frontend × 2</text>
+        <text x="435" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">this page</text>
         </g>
+        <g class="clickable" data-acc="SHORTENER">
+        <rect x="510" y="465" width="200" height="190" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="610" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: pwd  /  ns: monitoring</text>
+        <rect x="520" y="500" width="180" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="610" y="520" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">pwd-frontend × 2</text>
+        <text x="610" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">client-side password gen</text>
+        <rect x="520" y="548" width="180" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="610" y="568" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">grafana × 1</text>
+        <text x="610" y="583" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">public viewer · admin login</text>
+        <rect x="520" y="596" width="180" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="610" y="616" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">prometheus + loki</text>
+        <text x="610" y="631" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">scrape · log aggregation</text>
+        </g>
+
+        <!-- Scrape and log-ship lines from apps to monitoring (dashed, lighter) -->
+        <path d="M 215 565 Q 350 670 510 615" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3" opacity="0.55" marker-end="url(#arrow-dim)"></path>
+        <text x="320" y="685" font-size="9.5" fill="currentColor" opacity="0.55" text-anchor="middle" font-style="italic">scrape /metrics · ship logs</text>
+
         <line x1="100" y1="655" x2="100" y2="780" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
-        <line x1="220" y1="655" x2="220" y2="780" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
-        <text x="245" y="700" font-size="11" fill="currentColor" opacity="0.7">SODA REST · HTTPS</text>
+        <line x1="170" y1="655" x2="170" y2="780" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <text x="190" y="710" font-size="11" fill="currentColor" opacity="0.7">SODA REST · HTTPS</text>
         <g class="clickable" data-acc="DATABASE">
-        <rect x="40" y="790" width="240" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
-        <text x="160" y="815" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Autonomous JSON Database</text>
-        <text x="160" y="836" font-size="11.5" fill="currentColor" opacity="0.7" text-anchor="middle">OCI managed · same region</text>
+        <rect x="30" y="790" width="240" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+        <text x="150" y="815" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Autonomous JSON Database</text>
+        <text x="150" y="836" font-size="11.5" fill="currentColor" opacity="0.7" text-anchor="middle">OCI managed · same region</text>
         </g>
       </svg>
     </div>
@@ -996,22 +1027,85 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
       <div class="acc-head">
         <span class="acc-tag">OBS</span>
         <div class="acc-titles">
-          <h3>Observability</h3>
-          <div class="acc-meta">Roadmap — designed, scheduled for the next iteration</div>
+          <h3>Observability — Prometheus, Loki, Grafana</h3>
+          <div class="acc-meta">live · public dashboards at <a href="https://grafana.1ms.my/" target="_blank" rel="noopener">grafana.1ms.my</a></div>
         </div>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <div class="proto-banner"><b>roadmap</b> the observability stack is designed and node-reserved. Not deployed yet.</div>
-        <p>A dedicated observability stack is planned and the larger 2 OCPU / 12 GB node (<code>10.0.1.135</code>) is reserved to host it. The intended components:</p>
+        <p>The observability stack is <strong>live</strong> and operating on the larger 2&nbsp;OCPU / 12&nbsp;GB observability node (<code>10.0.1.135</code>). Anonymous read-only access is enabled — anyone visiting <a href="https://grafana.1ms.my/" target="_blank" rel="noopener">grafana.1ms.my</a> lands directly on the home dashboard without a login. Admin sign-in uses a credential pair reconciled from OCI Vault via External Secrets Operator.</p>
+
+        <p>Components, all pinned to specific versions:</p>
         <ul>
-          <li><strong>Prometheus</strong> via <code>kube-prometheus-stack</code> — scrapes node-exporter, kubelet, Envoy Gateway, External Secrets Operator, Flux controllers and application <code>/metrics</code> endpoints.</li>
-          <li><strong>Grafana</strong> — dashboards for cluster health, ingress (request rate, p50/p95/p99 latency, error rate) and application metrics (shortens per second, redirects per second).</li>
-          <li><strong>Loki</strong> — central log aggregation, with Grafana Alloy as the collection agent.</li>
-          <li><strong>Alertmanager</strong> — alert routing through OCI Email Delivery.</li>
+          <li><strong>Prometheus 2.55</strong> via the <code>kube-prometheus-stack</code> chart — scrapes node-exporter, kubelet/cAdvisor, kube-state-metrics, and Flux controllers through ServiceMonitor CRDs.</li>
+          <li><strong>Alertmanager 0.27</strong> — alert routing. Currently with a no-op receiver; Telegram bot integration is the next iteration.</li>
+          <li><strong>Loki 3.2</strong> in SingleBinary mode — log aggregation, filesystem storage on PVC.</li>
+          <li><strong>Grafana Alloy 1.5</strong> as a DaemonSet on every node — tails container logs, enriches with Kubernetes metadata, ships to Loki.</li>
+          <li><strong>Grafana 11.2</strong> — visualisation, with two data sources wired (Prometheus + Loki) and ~30 dashboards pre-provisioned (4 hand-built + the full kubernetes-mixin set from kube-prometheus-stack).</li>
+          <li><strong>node-exporter</strong> DaemonSet for node-level metrics on all three workers.</li>
+          <li><strong>kube-state-metrics</strong> for Pod/Deployment/etc state.</li>
         </ul>
-        <p style="margin-top:18px;"><a href="#slo">▸ see §04 for the SLO targets these alerts will fire on</a></p>
-        <p>Until the stack is in place, operational visibility is provided through <code>kubectl logs</code>, k9s, Cloudflare's HTTP analytics for edge metrics, and the OCI Console for resource-level monitoring.</p>
+
+        <p>The home dashboard — node count, total running pods, restart counters, and resource graphs — is the entry point for anyone evaluating the platform:</p>
+        <figure>
+          <img src="/img/grafana-cluster-overview.png" alt="Grafana home dashboard showing 3 nodes Ready, 63 pods Running, 0 restarts, with CPU and memory timeseries per node and pods-by-namespace breakdown" loading="lazy" />
+          <figcaption>The home dashboard at <code>grafana.1ms.my</code> — Cluster Overview, served anonymously.</figcaption>
+        </figure>
+
+        <h4 style="margin-top:24px;">Pod placement and isolation</h4>
+        <p>All stateful observability pods (Prometheus, Alertmanager, Loki, Grafana, kube-state-metrics, the Prometheus Operator itself) are pinned to the observability node via a <code>nodeSelector: workload=observability</code> on the node and matching selectors in every HelmRelease. DaemonSets (node-exporter, Alloy) run on every node by design — that's where the data is.</p>
+        <p>Each PVC starts intentionally small — <strong>5 GiB</strong> Prometheus, <strong>5 GiB</strong> Loki, <strong>2 GiB</strong> Grafana, <strong>1 GiB</strong> Alertmanager — about <strong>13 GiB</strong> total. With Always Free providing 200 GiB of Block Volume and the underlying volumes supporting online expansion, the plan is to observe actual growth for a week, then resize via GitOps. Bumping a PVC happens by editing the HelmRelease values, committing, and letting Flux apply — no <code>kubectl edit</code> against live state.</p>
+
+        <h4 style="margin-top:24px;">Logs — Loki + Alloy</h4>
+        <p>Alloy runs as a DaemonSet on every node, tails container logs from <code>/var/log/pods/</code>, attaches Kubernetes labels (namespace, pod, container, node) as Loki stream labels, and ships to the Loki SingleBinary on the observability node. Retention is set to 7 days, enforced by Loki's compactor.</p>
+        <figure>
+          <img src="/img/grafana-logs-explorer.png" alt="Grafana Logs Explorer dashboard with a per-namespace log volume timeseries and live log entries from the urlshortener namespace" loading="lazy" />
+          <figcaption>Logs explorer — log-volume-per-namespace timeseries on top, live log stream filtered by namespace below.</figcaption>
+        </figure>
+
+        <h4 style="margin-top:24px;">Standard kubernetes dashboards</h4>
+        <p>The <code>kube-prometheus-stack</code> chart provisions the full <strong>kubernetes-mixin</strong> dashboard set as ConfigMaps. The Grafana sidecar discovers them by label and imports them on startup — without any further configuration the cluster gets the canonical dashboards every Kubernetes engineer expects: API server, kubelet, Compute Resources per cluster/namespace/node/pod/workload, networking, persistent volumes, and more.</p>
+        <figure>
+          <img src="/img/grafana-compute-resources.png" alt="Kubernetes / Compute Resources / Cluster dashboard showing CPU and memory utilisation, requests and limits commitment, per-namespace CPU usage table and timeseries" loading="lazy" />
+          <figcaption><code>Kubernetes / Compute Resources / Cluster</code> — one of ~25 standard dashboards from the kubernetes-mixin set, auto-imported via the sidecar.</figcaption>
+        </figure>
+
+        <h4 style="margin-top:24px;">Public access architecture</h4>
+        <p>Grafana is exposed publicly through the same path as the other sites — an <code>HTTPRoute</code> on the homelab Gateway, traffic arriving via the existing Cloudflare Tunnel. The Grafana config sets <code>auth.anonymous</code> with <code>org_role: Viewer</code>, which lets anyone see the dashboards. The login form is still available — admin signs in with credentials reconciled from OCI Vault via two ExternalSecrets:</p>
+
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">ExternalSecret — Grafana admin credentials from Vault</span>
+          </div>
+<pre class="code"><code><span class="k">apiVersion</span>: external-secrets.io/v1beta1
+<span class="k">kind</span>: ExternalSecret
+<span class="k">metadata</span>:
+  <span class="k">name</span>: grafana-admin
+  <span class="k">namespace</span>: monitoring
+<span class="k">spec</span>:
+  <span class="k">refreshInterval</span>: 1h
+  <span class="k">secretStoreRef</span>:
+    <span class="k">name</span>: oci-vault
+    <span class="k">kind</span>: ClusterSecretStore
+  <span class="k">target</span>:
+    <span class="k">name</span>: grafana-admin
+    <span class="k">template</span>:
+      <span class="k">type</span>: Opaque
+      <span class="k">data</span>:
+        <span class="k">admin-user</span>: admin
+        <span class="k">admin-password</span>: <span class="s">"{{ .password }}"</span>
+  <span class="k">data</span>:
+    - <span class="k">secretKey</span>: password
+      <span class="k">remoteRef</span>:
+        <span class="k">key</span>: grafana-admin-password</code></pre>
+        </div>
+
+        <h4 style="margin-top:24px;">What is being prepared next</h4>
+        <ul>
+          <li><strong>Alertmanager → Telegram bot</strong> — wire the existing no-op receiver to a Telegram channel. Same plumbing will later deliver Flux release notifications.</li>
+          <li><strong>Application <code>/metrics</code> endpoints</strong> — add a Prometheus client to the Go backend (writer and reader). Once exposed, ServiceMonitor manifests scrape them and the Applications dashboard will show real request rates and latency percentiles.</li>
+          <li><strong>SLO rules</strong> — see §04 below for the targets that will drive alerts once the above two are wired.</li>
+        </ul>
       </div>
     </article>
 
@@ -1073,10 +1167,121 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
     </div>
   </section>
 
+  <!-- DECISION LOG / INCIDENTS -->
+  <section class="block" id="decisions-log">
+    <div class="sec-head">
+      <span class="sec-num">04 ·</span>
+      <h2 class="sec-title">Decision log — incidents, fixes, lessons</h2>
+    </div>
+    <p class="sec-sub">Real problems encountered while building and operating this platform — what broke, how it was tracked down, what fixed it, and what was learned.</p>
+
+    <article class="acc expanded" id="acc-inc-1">
+      <div class="acc-head">
+        <span class="acc-tag">INC</span>
+        <div class="acc-titles">
+          <h3>Flux self-update wiped every controller in the cluster</h3>
+          <div class="acc-meta">flux bootstrap · server-side apply · annotation-size limit</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p><strong>Problem.</strong> Regenerating <code>flux-system/gotk-components.yaml</code> with <code>--components-extra=image-reflector-controller,image-automation-controller</code>, the kustomize-controller deleted the four existing Flux Deployments before the new ones came up. The reconcile then failed because the kustomize-controller itself was the resource being replaced. Cluster ended up with zero Flux controllers running — and with no Flux, nothing reconciled.</p>
+        <p><strong>Investigation.</strong> <code>kubectl get pods -n flux-system</code> showed an empty namespace; describe on the Kustomization showed a timeout. The manifest itself was over Kubernetes' annotation-size limit when applied through the standard client-side merge path, so a normal <code>kubectl apply -f</code> rejected it.</p>
+        <p><strong>Fix.</strong> <code>kubectl apply -f gotk-components.yaml --server-side --force-conflicts</code> — server-side apply bypasses the annotation-size limit. The controllers came back, picked up the GitRepository, and reconciliation resumed.</p>
+        <p><strong>Lesson.</strong> Never bootstrap or upgrade Flux through a Kustomization that depends on Flux itself. The components install is an out-of-band step; the rest is GitOps. Also: <code>--server-side</code> is the correct flag for any manifest larger than a handful of KB.</p>
+      </div>
+    </article>
+
+    <article class="acc expanded" id="acc-inc-2">
+      <div class="acc-head">
+        <span class="acc-tag">INC</span>
+        <div class="acc-titles">
+          <h3>OCI NoSQL started charging — same-day migration to Autonomous JSON Database</h3>
+          <div class="acc-meta">cost surprise · storage interface swap · ~3 hours to production</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p><strong>Problem.</strong> The URL shortener's original storage was OCI NoSQL, configured for what looked like the Always Free tier. Two billing cycles later a small monthly charge appeared — the Always Free terms for NoSQL in <code>il-jerusalem-1</code> had changed and the provisioned-capacity model no longer fit under them.</p>
+        <p><strong>Investigation.</strong> The OCI Cost Analysis view broke the bill down to the NoSQL table specifically. Autonomous JSON Database (workload type JSON) was Always Free in the same region with 1 ECPU and 20 GB included — much more headroom and managed backups out of the box.</p>
+        <p><strong>Fix.</strong> Drop-in replacement of the <code>Storage</code> interface implementation: a new <code>SodaStore</code> talking to ORDS via plain HTTPS Basic Auth, no Oracle client libraries needed. The interface itself did not change; only the file under <code>internal/storage/</code> was swapped, plus the ExternalSecret in <code>personal-k8s</code> for the new database password. Total elapsed time from "billing alert" to "new backend deployed via Flux Image Automation": about three hours.</p>
+        <p><strong>Lesson.</strong> An abstraction is worth keeping even on a one-service project. With a thin <code>Storage</code> interface, this was a file swap rather than a refactor. Pragmatic Go interfaces pay for themselves the first time the backend changes.</p>
+      </div>
+    </article>
+
+    <article class="acc expanded" id="acc-inc-3">
+      <div class="acc-head">
+        <span class="acc-tag">INC</span>
+        <div class="acc-titles">
+          <h3>SODA REST returned 503 for a dedicated database user</h3>
+          <div class="acc-meta">always free limitation · pragmatic compromise</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p><strong>Problem.</strong> Best practice says application services connect under a least-privilege schema, not as ADMIN. So I created a <code>URLSHORTENER</code> user, granted privileges, ran <code>ORDS_ADMIN.ENABLE_SCHEMA</code>, and tried to use <code>/ords/urlshortener/soda/latest/urls</code>. The response was a 503 ServiceUnavailable with an ECID and no further information.</p>
+        <p><strong>Investigation.</strong> The schema appeared in <code>DBA_ORDS_SCHEMAS</code> as enabled. ADMIN-side endpoints (<code>/ords/admin/soda/latest/</code>) worked perfectly. On Always Free Autonomous Database, REST-enabling a non-ADMIN schema for SODA is restricted by the managed-instance configuration in ways that are not user-controllable. The OCI Console offers no toggle for it.</p>
+        <p><strong>Fix.</strong> Use the ADMIN schema for the application connection. Document the trade-off explicitly: this is acceptable for a personal demonstration project but would not be acceptable for client work, where a self-managed Oracle deployment or a different DBaaS would give the granular IAM control that Always Free withholds.</p>
+        <p><strong>Lesson.</strong> Managed services trade flexibility for operational simplicity. Knowing exactly where that trade-off bites — and being able to say so honestly when interviewed — matters more than pretending the limitation does not exist. The right move is to document the compromise, not hide it.</p>
+      </div>
+    </article>
+
+    <article class="acc expanded" id="acc-inc-4">
+      <div class="acc-head">
+        <span class="acc-tag">INC</span>
+        <div class="acc-titles">
+          <h3>Pods stuck — namespace rename forgot the ServiceAccount reference</h3>
+          <div class="acc-meta">kubectl get events · admission failure · the obvious place to look</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p><strong>Problem.</strong> The infra-frontend Deployment was copied from the cv-frontend manifest. The ReplicaSet was created but no pods came up. <code>kubectl get pods -n infra</code> returned an empty list.</p>
+        <p><strong>Investigation.</strong> <code>kubectl get events -n infra --sort-by='.lastTimestamp'</code> told the whole story immediately: <code>error looking up service account infra/cv: serviceaccount "cv" not found</code>. The manifest copy had updated every reference from <code>cv</code> to <code>infra</code> except <code>serviceAccountName: cv</code>.</p>
+        <p><strong>Fix.</strong> One-line edit, one git commit, one Flux reconcile. Pods came up in under a minute.</p>
+        <p><strong>Lesson.</strong> When pods do not appear, the next command after <code>kubectl get pods</code> is always <code>kubectl get events</code> in that namespace. Kubernetes is loud about admission failures — the information is right there. Also: copy-paste between namespaces is a smell. The proper long-term fix is Kustomize overlays with a single base manifest.</p>
+      </div>
+    </article>
+
+    <article class="acc expanded" id="acc-inc-5">
+      <div class="acc-head">
+        <span class="acc-tag">INC</span>
+        <div class="acc-titles">
+          <h3>Flux Image Automation pushes failed silently after switching from PAT to SSH</h3>
+          <div class="acc-meta">runtime patch vs git source-of-truth · the GitOps lesson</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p><strong>Problem.</strong> The Flux GitRepository was originally configured with HTTPS and a personal access token. As the PAT expiration approached, I switched to SSH using a deploy key with write access. Pull worked immediately. Image Automation, however, kept producing "no new updates" even after pushing new OCIR tags it should have committed back.</p>
+        <p><strong>Investigation.</strong> <code>kubectl patch gitrepository</code> updated the runtime URL to <code>ssh://…</code>, but kustomize-controller kept resetting it to the HTTPS URL stored in <code>flux-system/gotk-sync.yaml</code>. Image Automation was therefore attempting to push to an HTTPS URL with no credentials.</p>
+        <p><strong>Fix.</strong> The runtime patch on a Flux-managed resource is always overwritten by the next reconcile. The source of truth is the YAML in the GitRepository itself. I updated <code>gotk-sync.yaml</code> to the SSH URL, committed, and reconciled. The image-automation-controller began pushing tag bumps within minutes.</p>
+        <p><strong>Lesson.</strong> In GitOps there is only one source of truth and it lives in the repository. <code>kubectl edit</code> and <code>kubectl patch</code> on Flux-managed resources are diagnostic tools, not configuration tools. If a change has to stick, it goes through Git.</p>
+      </div>
+    </article>
+
+    <article class="acc expanded" id="acc-inc-6">
+      <div class="acc-head">
+        <span class="acc-tag">INC</span>
+        <div class="acc-titles">
+          <h3>Pinned Grafana to a non-existent image tag · ImagePullBackOff</h3>
+          <div class="acc-meta">helm chart version ≠ app version · double-prefix gotcha</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p><strong>Problem.</strong> While rolling out the observability stack I pinned the Grafana image explicitly to make the version predictable. After the next Flux reconcile the Grafana pod was stuck in <code>ImagePullBackOff</code>, and because the <code>infrastructure</code> Kustomization waits for all HelmReleases to be Ready, the whole reconcile loop blocked — including the <code>applications</code> Kustomization that depends on infrastructure.</p>
+        <p><strong>Investigation.</strong> <code>kubectl describe pod</code> showed two distinct issues stacked on top of each other. First, the image path read <code>docker.io/docker.io/grafana/grafana</code> — a double prefix. The Grafana Helm chart prepends <code>docker.io/</code> automatically when the repository value doesn't start with a registry, and I'd written <code>docker.io/grafana/grafana</code> in values, producing the duplication. Second, the tag I'd chosen — <code>11.3.0</code> — didn't actually exist on Docker Hub; the chart's default <code>appVersion</code> at the time was <code>11.2.1</code>.</p>
+        <p><strong>Fix.</strong> Two parts. The repository field should be just the path <code>grafana/grafana</code> — let the chart handle the registry prefix. The tag should be a tag that demonstrably exists; the safe move is to drop the explicit pin and inherit the chart's tested <code>appVersion</code>. Once both were corrected and committed, the pod started cleanly and the dependent Kustomizations unblocked.</p>
+        <p><strong>Lesson.</strong> Helm chart version and application <code>appVersion</code> are different release cadences. <code>chart: grafana@8.5.2</code> ships with whatever <code>appVersion</code> the chart maintainer chose — currently <code>11.2.1</code>, not <code>11.3.x</code>. Pinning the chart version is enough for reproducibility; pinning the image tag too is double-pinning, and useful only when there's a concrete reason. And whenever an image tag is being typed by hand, the registry list at <code>hub.docker.com</code> is the source of truth — guessing creates the exact failure I caused.</p>
+      </div>
+    </article>
+  </section>
+
   <!-- SLO / FUTURE STATE -->
   <section class="block" id="slo">
     <div class="sec-head">
-      <span class="sec-num">04 ·</span>
+      <span class="sec-num">05 ·</span>
       <h2 class="sec-title">Observability — SLO targets <span style="color:var(--mute); font-weight:400; font-size:0.65em;">prototype</span></h2>
     </div>
     <p class="sec-sub">A prototype of what the observability stack from <a href="#acc-obs">§02 · obs</a> will measure once it ships. The targets below are committed; the <code>30d actual</code> column populates from Prometheus when the stack lands on the reserved node.</p>
