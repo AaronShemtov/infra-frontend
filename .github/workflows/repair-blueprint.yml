@@ -1,0 +1,64 @@
+name: repair-blueprint
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore stylesheet and apply navigation styles
+        shell: bash
+        run: |
+          git show afe647ec92b9c3781a6d350babf197eceed35bd2:public/blueprint.css > public/blueprint.css
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('public/blueprint.css')
+          s = p.read_text()
+          old = '''.ribbon-nav { display: flex; gap: 16px; }
+          .ribbon-nav a { color: var(--mute); }
+          .ribbon-nav a:hover { color: var(--ink); text-decoration: none; }
+          .ribbon-nav a.current { color: var(--ink); }'''
+          new = '''.ribbon-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+          .ribbon-nav a {
+            color: var(--mute);
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 4px 8px;
+            line-height: 1.2;
+            transition: color 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
+          }
+          .ribbon-nav a:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            text-decoration: none;
+          }
+          .ribbon-nav a.current {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: var(--accent-soft);
+          }'''
+          if s.count(old) != 1:
+              raise SystemExit('expected ribbon navigation block not found exactly once')
+          p.write_text(s.replace(old, new))
+          PY
+          test "$(wc -c < public/blueprint.css)" -gt 25000
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add public/blueprint.css
+          git commit -m 'Restore full stylesheet with separated navigation'
+          git push
