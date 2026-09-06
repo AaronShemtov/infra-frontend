@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Platform Architecture — infra.1ms.my</title>
-<meta name="description" content="The Kubernetes platform behind 1ms.my, cv.1ms.my and infra.1ms.my — OCI, OKE, Flux GitOps, Cloudflare, External Secrets + Vault." />
+<meta name="description" content="The Kubernetes platform behind 1ms.my, aboutme.1ms.my and infra.1ms.my — OCI, OKE, Flux GitOps, Cloudflare, External Secrets + Vault." />
 <script>
   // theme toggle (early to avoid flash)
   (function(){ try { var t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
@@ -83,7 +83,7 @@
     <div style="display:flex; align-items:center; gap:18px;">
       <nav class="ribbon-nav">
         <a href="https://1ms.my/"><span>1ms.my</span><span class="ribbon-sub">link shortener</span></a>
-        <a href="https://cv.1ms.my/">cv</a>
+        <a href="https://aboutme.1ms.my/">about me</a>
         <a href="https://infra.1ms.my/" class="current">platform</a>
         <a href="https://pwd.1ms.my/">password-generator</a>
         <a href="https://grafana.1ms.my/" target="_blank" rel="noopener"><span>grafana</span><span class="ribbon-ext">↗</span></a>
@@ -132,7 +132,7 @@
 
         <ul class="site-list">
           <li><a href="https://1ms.my/"><span class="dot-i"></span><span><span class="name">1ms.my</span> <span class="desc">— URL shortener · Go backend, nginx frontend</span></span><span style="color:var(--mute)">↗</span></a></li>
-          <li><a href="https://cv.1ms.my/"><span class="dot-i"></span><span><span class="name">cv.1ms.my</span> <span class="desc">— CV with downloadable PDF</span></span><span style="color:var(--mute)">↗</span></a></li>
+          <li><a href="https://aboutme.1ms.my/"><span class="dot-i"></span><span><span class="name">aboutme.1ms.my</span> <span class="desc">— About Me with downloadable CV</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li><span class="dot-i"></span><span><span class="name">infra.1ms.my</span> <span class="desc">— the page you are reading</span></span><span style="color:var(--accent);font-size:11px">YOU ARE HERE</span></li>
           <li><a href="https://pwd.1ms.my/"><span class="dot-i"></span><span><span class="name">pwd.1ms.my</span> <span class="desc">— client-side cryptographic password generator</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li><a href="https://grafana.1ms.my/"><span class="dot-i"></span><span><span class="name">grafana.1ms.my</span> <span class="desc">— public read-only observability dashboards</span></span><span style="color:var(--mute)">↗</span></a></li>
@@ -201,10 +201,10 @@
         </div>
       </div>
       <div class="live-svc">
-        <span class="live-dot" data-url="https://cv.1ms.my/"></span>
+        <span class="live-dot" data-url="https://aboutme.1ms.my/"></span>
         <div>
-          <div class="name">cv.1ms.my</div>
-          <div class="meta" data-status="cv.1ms.my">checking…</div>
+          <div class="name">aboutme.1ms.my</div>
+          <div class="meta" data-status="aboutme.1ms.my">checking…</div>
         </div>
       </div>
       <div class="live-svc">
@@ -282,7 +282,7 @@
         <line x1="450" y1="415" x2="450" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
         <line x1="610" y1="415" x2="610" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
         <text x="145" y="438" font-size="10" fill="currentColor" opacity="0.7">1ms.my</text>
-        <text x="305" y="438" font-size="10" fill="currentColor" opacity="0.7">cv.1ms.my</text>
+        <text x="305" y="438" font-size="10" fill="currentColor" opacity="0.7">aboutme.1ms.my</text>
         <text x="465" y="438" font-size="10" fill="currentColor" opacity="0.7">infra.1ms.my</text>
         <text x="625" y="438" font-size="10" fill="currentColor" opacity="0.7">pwd · grafana</text>
         <g class="clickable" data-acc="SHORTENER">
@@ -451,7 +451,7 @@
         <p>Hostname-based routing:</p>
         <ul>
           <li><code>1ms.my</code> → <code>urlshortener</code> namespace (writer, reader, frontend Services selected by path)</li>
-          <li><code>cv.1ms.my</code> → <code>cv</code> namespace (<code>cv-frontend</code>)</li>
+          <li><code>aboutme.1ms.my</code> → <code>cv</code> namespace (<code>cv-frontend</code>)</li>
           <li><code>infra.1ms.my</code> → <code>infra</code> namespace (this page)</li>
         </ul>
                 <div class="code-block">
@@ -1186,7 +1186,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <ul>
           <li><strong><a href="https://github.com/AaronShemtov/urlshortener-backend" target="_blank" rel="noopener">AaronShemtov/urlshortener-backend</a></strong> — Go service running in writer or reader mode, selected by environment variable. SODA REST client, distroless image.</li>
           <li><strong><a href="https://github.com/AaronShemtov/urlshortener-frontend" target="_blank" rel="noopener">AaronShemtov/urlshortener-frontend</a></strong> — static HTML, CSS and JavaScript form, served by nginx-unprivileged.</li>
-          <li><strong><a href="https://github.com/AaronShemtov/cv-frontend" target="_blank" rel="noopener">AaronShemtov/cv-frontend</a></strong> — the CV site at cv.1ms.my.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/cv-frontend" target="_blank" rel="noopener">AaronShemtov/cv-frontend</a></strong> — the CV site at aboutme.1ms.my.</li>
           <li><strong><a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener">AaronShemtov/infra-frontend</a></strong> — this page.</li>
           <li><strong><a href="https://github.com/AaronShemtov/pwd-frontend" target="_blank" rel="noopener">AaronShemtov/pwd-frontend</a></strong> — the password generator at pwd.1ms.my; client-side cryptographic generation, no backend.</li>
           <li><strong><a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener">AaronShemtov/personal-k8s</a></strong> — the GitOps source of truth. Contains every Flux Kustomization, HelmRelease and Kubernetes manifest reconciled against the cluster.</li>
@@ -1374,7 +1374,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
           <td>Alertmanager → Email</td>
         </tr>
         <tr>
-          <td class="svc">cv.1ms.my</td>
+          <td class="svc">aboutme.1ms.my</td>
           <td>availability · static</td>
           <td>99.9 %</td>
           <td class="pending">pending observability</td>
@@ -1395,11 +1395,11 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
 
   <footer class="foot">
     <div>
-      <span class="tag">built · operated · documented · monitored by <a href="https://cv.1ms.my/" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Aaron Shemtov</a></span>
+      <span class="tag">built · operated · documented · monitored by <a href="https://aboutme.1ms.my/" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Aaron Shemtov</a></span>
     </div>
     <div class="foot-nav">
       <a href="https://1ms.my/"><span>1ms.my</span><span class="ribbon-sub">link shortener</span></a>
-      <a href="https://cv.1ms.my/">cv</a>
+      <a href="https://aboutme.1ms.my/">about me</a>
       <a href="https://infra.1ms.my/">platform</a>
       <a href="https://pwd.1ms.my/">password-generator</a>
       <a href="https://grafana.1ms.my/" target="_blank" rel="noopener"><span>grafana</span><span class="ribbon-ext">↗</span></a>
