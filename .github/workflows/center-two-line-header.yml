@@ -1,9 +1,25 @@
-name: center-two-line-header
+name: diagnose-header-patch
 on:
   push:
     branches: [fix/center-two-line-header]
 permissions:
   contents: write
+  actions: read
 jobs:
-  apply:
-    uses: AaronShemtov/cv-frontend/.github/workflows/center-two-line-header.yml@7837ba96c8f6c15b29baf4530253af4f6863ea97
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/center-two-line-header
+      - name: Retrieve the completed failed job log for inspection
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run view 34125562074 --repo "$GITHUB_REPOSITORY" --log-failed > /tmp/header-patch.log
+          tail -c 8000 /tmp/header-patch.log > header-patch-diagnostic.txt
+          git add header-patch-diagnostic.txt
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Record header patch failure for diagnosis on feature branch'
+          git push origin HEAD:fix/center-two-line-header
