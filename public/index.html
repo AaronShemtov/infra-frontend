@@ -71,6 +71,18 @@
   .foot-nav a:hover .ribbon-ext,
   .foot-nav a:hover .ribbon-sub { color: var(--accent); }
   .foot-nav a > span:first-child { display: block; line-height: 1.1; }
+  /* Observability stack section: the component table scrolls sideways on
+     narrow screens instead of widening the page, and the blocks under it keep
+     the spacing used elsewhere on the page. */
+  .table-scroll { overflow-x: auto; }
+  .table-scroll .slo-table { min-width: 640px; }
+  .obs-cols { margin-top: 22px; }
+  .obs-next { margin-top: 22px; }
+  /* blueprint.css styles figures only inside .acc-body; the same look here. */
+  .obs-figs { margin-top: 22px; }
+  .obs-figs figure { margin: 0 0 18px; }
+  .obs-figs figure img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; display: block; }
+  .obs-figs figcaption { font-family: var(--mono); font-size: 11.5px; color: var(--mute); margin-top: 8px; letter-spacing: 0.01em; }
 </style>
 </head>
 <body>
@@ -1097,6 +1109,10 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
+        <p>Prometheus, Alertmanager, Loki, Alloy, Tempo and Grafana run in the <code>monitoring</code> namespace, installed by Flux like everything else. Components, versions, storage and what each one measures are in <a href="#observability">§04 · Observability stack</a> below.</p>
+        <!-- HIDDEN: the previous description of the stack, written for the May
+          cluster (a dedicated observability node, a PVC for every component).
+          Section 04 replaces it. To restore, delete this line and the closing line.
         <p>The observability stack is <strong>live</strong> and operating on the larger 2&nbsp;OCPU / 12&nbsp;GB observability node (<code>10.0.1.135</code>). Anonymous read-only access is enabled — anyone visiting <a href="https://grafana.1ms.my/" target="_blank" rel="noopener">grafana.1ms.my</a> lands directly on the home dashboard without a login. Admin sign-in uses a credential pair reconciled from OCI Vault via External Secrets Operator.</p>
 
         <p>Components, all pinned to specific versions:</p>
@@ -1170,6 +1186,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
           <li><strong>Application <code>/metrics</code> endpoints</strong> — add a Prometheus client to the Go backend (writer and reader). Once exposed, ServiceMonitor manifests scrape them and the Applications dashboard will show real request rates and latency percentiles.</li>
           <li><strong>SLO rules</strong> — see §04 below for the targets that will drive alerts once the above two are wired.</li>
         </ul>
+        END HIDDEN: previous stack description -->
       </div>
     </article>
 
@@ -1346,7 +1363,70 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
   </section>
   END HIDDEN: Decision log -->
 
-  <!-- SLO / FUTURE STATE -->
+  <!-- OBSERVABILITY STACK -->
+  <section class="block" id="observability">
+    <div class="sec-head">
+      <span class="sec-num">04 ·</span>
+      <h2 class="sec-title">Observability stack</h2>
+    </div>
+    <p class="sec-sub">Metrics, logs and alerting for the cluster and for the AI agents running on it. Everything lives in the <code>monitoring</code> namespace, is installed by Flux from Git, and is public and read-only at <a href="https://grafana.1ms.my/" target="_blank" rel="noopener">grafana.1ms.my</a>.</p>
+
+    <div class="table-scroll">
+      <table class="slo-table">
+        <thead><tr><th>component</th><th>version</th><th>role</th><th>storage · retention</th></tr></thead>
+        <tbody>
+          <tr><td class="svc">Prometheus</td><td>2.55.1</td><td>metrics, 12 scrape jobs</td><td>50&nbsp;GB block volume · 60 days, capped at 30&nbsp;GB</td></tr>
+          <tr><td class="svc">Alertmanager</td><td>0.27.0</td><td>routing for the kube-prometheus-stack default rules</td><td>emptyDir</td></tr>
+          <tr><td class="svc">Loki</td><td>3.2.0</td><td>logs, single binary</td><td>node disk · 30 days</td></tr>
+          <tr><td class="svc">Alloy</td><td>1.5.0</td><td>DaemonSet: pod logs to Loki, OTLP receiver for traces</td><td>—</td></tr>
+          <tr><td class="svc">Tempo</td><td>2.9.0</td><td>traces over OTLP, received through Alloy</td><td>no volume · 24 hours</td></tr>
+          <tr><td class="svc">Grafana</td><td>11.3.9</td><td>dashboards, anonymous Viewer access</td><td>stateless, rebuilt from Git on every start</td></tr>
+          <tr><td class="svc">Exporters</td><td>node-exporter 1.8.2 · kube-state-metrics 2.14.0</td><td>node and object state; Prometheus Operator 0.78.2 manages the CRDs</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cols-2 obs-cols">
+      <div class="panel">
+        <h4>What is measured</h4>
+        <ul>
+          <li><strong>Cluster health</strong><span class="why">nodes, pods, restarts, CPU and memory per node and per workload, from node-exporter, kubelet/cAdvisor and kube-state-metrics.</span></li>
+          <li><strong>AI agents</strong><span class="why">token usage, prompt-cache hits, model and tool latency, policy decisions and human approvals. They are scraped from the lead and coder agents' <code>/metrics</code>, under the OpenTelemetry GenAI metric names.</span></li>
+          <li><strong>Azure OpenAI</strong><span class="why">throttling, tokens per deployment, cached input, latency and content-filter refusals, read from Azure Monitor by a service principal that holds only Monitoring Reader.</span></li>
+          <li><strong>Logs from every pod</strong><span class="why">Alloy reads them through the Kubernetes API and labels each stream with namespace, pod, container and node.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Dashboards, delivery &amp; access</h4>
+        <ul>
+          <li><strong>28 dashboards, all from Git</strong><span class="why">five hand-built (Cluster Overview as the home page, Applications, Logs Explorer, GitOps Flux, AI Agents) plus 23 from kube-prometheus-stack, loaded from ConfigMaps by the Grafana sidecar.</span></li>
+          <li><strong>Grafana keeps no state</strong><span class="why">datasources come from Helm values, dashboards from ConfigMaps, the admin password from OCI Vault through External Secrets. UI edits are disabled, so a restart always returns exactly what Git declares.</span></li>
+          <li><strong>Telegram for delivery events</strong><span class="why">Flux posts reconciliation errors and every image rollout; most service builds also post their result from CI.</span></li>
+          <li><strong>Public through the same path as the sites</strong><span class="why">an HTTPRoute on the Envoy Gateway behind the Cloudflare Tunnel, with no inbound port and no load balancer of its own.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="obs-figs">
+      <figure>
+        <img src="/img/grafana-2026-09-cluster-overview.png" width="1400" height="828" alt="Grafana home dashboard Cluster — Overview for the last 6 hours: 2 nodes Ready, 66 pods Running, 0 pods not ready, 0 restarts in 24 hours, CPU and memory usage per node, pods by namespace and pod restart rate" loading="lazy" />
+        <figcaption>The home dashboard at <code>grafana.1ms.my</code> — Cluster Overview, last 6 hours. Node legends removed, because OKE names nodes by their private IPs.</figcaption>
+      </figure>
+      <figure>
+        <img src="/img/grafana-2026-09-compute-resources.png" width="1400" height="1094" alt="Kubernetes / Compute Resources / Cluster dashboard for the last 6 hours: CPU and memory utilisation, requests and limits commitment, CPU and memory usage per namespace, and CPU quota and memory request tables by namespace" loading="lazy" />
+        <figcaption><code>Kubernetes / Compute Resources / Cluster</code> — one of the 23 kube-prometheus-stack dashboards that the Grafana sidecar loads from ConfigMaps.</figcaption>
+      </figure>
+    </div>
+
+    <div class="proto-banner obs-next">
+      <b>next</b>
+      <span>Alertmanager still routes to a no-op receiver, so the default rules fire without paging anyone; Telegram is the next receiver. Tempo is wired end to end, but no service is instrumented yet. The Go URL shortener exposes no <code>/metrics</code>, which request-rate and latency SLOs will need.</span>
+    </div>
+  </section>
+
+  <!-- HIDDEN: Observability, SLO targets (prototype), replaced by the
+     Observability stack section above. To restore, delete this line and the
+     closing line after the section.
   <section class="block" id="slo">
     <div class="sec-head">
       <span class="sec-num">05 ·</span>
@@ -1397,6 +1477,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
       </tbody>
     </table>
   </section>
+  END HIDDEN: SLO targets -->
 
   <footer class="foot">
     <div>
