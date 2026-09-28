@@ -432,13 +432,13 @@
       <div class="acc-body">
         <p>The entire platform runs on <strong>Oracle Cloud Infrastructure (OCI)</strong> in the <code>il-jerusalem-1</code> region. The services in active use:</p>
         <ul>
-          <li><strong>Compute (Ampere A1)</strong> — Arm-based virtual machines allocated as the OKE worker pool.</li>
+          <li><strong>Compute (Ampere A1)</strong> — two Arm-based <code>VM.Standard.A1.Flex</code> virtual machines with 2 OCPU each, one per OKE node pool.</li>
           <li><strong>Container Engine for Kubernetes (OKE)</strong> — managed Kubernetes control plane.</li>
-          <li><strong>Block Volume</strong> — boot volumes for worker nodes; later, persistent volumes for the observability stack.</li>
-          <li><strong>Container Registry (OCIR)</strong> — private repositories for every application image.</li>
-          <li><strong>Vault</strong> — master encryption keys and tenancy-managed secrets. Source of truth for all runtime credentials.</li>
-          <li><strong>Autonomous Database (JSON workload)</strong> — managed document store accessed over SODA REST.</li>
-          <li><strong>IAM (Dynamic Groups + Policies)</strong> — grants the OKE worker node identity scoped access to Vault secrets and the database, eliminating static cloud credentials.</li>
+          <li><strong>Block Volume</strong> — boot volumes for the worker nodes and one 50&nbsp;GB volume for Prometheus, the only persistent volume in the cluster.</li>
+          <li><strong>Container Registry (OCIR)</strong> — private repositories for the eight images the platform builds and runs.</li>
+          <li><strong>Vault</strong> — master encryption keys and the secrets they protect. Source of truth for the credentials the workloads use; External Secrets Operator syncs them into Kubernetes Secrets.</li>
+          <li><strong>Autonomous Database (JSON workload)</strong> — managed document store. The URL shortener uses it over SODA REST; the agents keep their memory in a separate schema over ORDS REST-Enabled SQL (see <a href="#acc-agents">agents</a>).</li>
+          <li><strong>IAM (Dynamic Groups + Policies)</strong> — gives the worker nodes an instance-principal identity. External Secrets Operator uses it to read Vault, so reaching the vault needs no stored credential. The database password and the OCIR pull token are themselves Vault secrets.</li>
         </ul>
                 <div class="code-block">
           <div class="code-head">
@@ -452,7 +452,7 @@
 <span class="k">spec</span>:
   <span class="k">provider</span>:
     <span class="k">oracle</span>:
-      <span class="k">vault</span>: ocid1.vault.oc1.il-jerusalem-1.hzvbd5tmaaatc.abwxiljrp27qfw44ua4jvugo25a42ydaasbwz4qzmfzkbvym54whglrjk5va
+      <span class="k">vault</span>: &lt;vault-ocid&gt;
       <span class="k">region</span>: il-jerusalem-1
       <span class="k">principalType</span>: InstancePrincipal</code></pre>
         </div>
@@ -465,24 +465,27 @@
         <span class="acc-tag">K8S</span>
         <div class="acc-titles">
           <h3>Kubernetes — OKE cluster</h3>
-          <div class="acc-meta">v1.32.1 · 3 worker nodes · VCN-Native CNI · OCI Block CSI</div>
+          <div class="acc-meta">v1.34.10 · 2 worker nodes on v1.33.10 · VCN-Native CNI · OCI Block CSI</div>
         </div>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>The cluster has three worker nodes, intentionally heterogeneous in capacity:</p>
+        <p>The cluster has two worker nodes, one in each of two node pools. Both are <code>VM.Standard.A1.Flex</code> Arm virtual machines with 2 OCPU and about 11&nbsp;GB of memory, running Oracle Linux 9 with CRI-O:</p>
         <ul>
-          <li><strong><code>10.0.1.37</code></strong> — 1 OCPU / 6 GB RAM — application workloads.</li>
-          <li><strong><code>10.0.1.66</code></strong> — 1 OCPU / 6 GB RAM — application workloads, paired with <code>.37</code> through pod anti-affinity for HA during rolling updates.</li>
-          <li><strong><code>10.0.1.135</code></strong> — 2 OCPU / 12 GB RAM — reserved for the observability stack (Prometheus, Grafana, Loki), which will be deployed in a future iteration.</li>
+          <li><strong><code>main-pool</code></strong> — the observability stack: Prometheus, Alertmanager, Loki, Tempo, Grafana, kube-state-metrics and the Prometheus Operator are pinned to it with <code>nodeSelector: name: main-pool</code>.</li>
+          <li><strong><code>apps-pool</code></strong> — only <code>pwd-frontend</code> is pinned to it.</li>
         </ul>
-        <p>The asymmetric split provides one larger node sized for memory-heavy observability workloads while keeping two smaller application nodes whose loss is absorbed by anti-affinity-spread replicas.</p>
-        <p>The <strong>restricted</strong> Pod Security Standard is enforced per namespace. All workloads run as non-root, drop all Linux capabilities, use the <code>RuntimeDefault</code> seccomp profile, and mount a read-only root filesystem where the application permits.</p>
-        <p>Below is a live view of the three nodes from k9s:</p>
+        <p>Everything else, from the Flux controllers to the application pods, is scheduled across both nodes. Each node accepts at most 35 pods, and both are close to that limit.</p>
+        <p>The four static sites (aboutme, infra, secrets, myip), the URL shortener's writer, reader and frontend, and <code>cloudflared</code> run two replicas each with <code>maxUnavailable: 0</code>, so a rolling update never takes them below two ready pods. Their pod anti-affinity is <em>preferred</em>, not required: the scheduler spreads the replicas across the two nodes when it can, but both can land on one node, and <code>pwd-frontend</code>, pinned to a one-node pool, always has both replicas there.</p>
+        <p>The <strong>restricted</strong> Pod Security Standard is enforced on the seven application namespaces (<code>aboutme</code>, <code>agents</code>, <code>ai-sre-agent</code>, <code>infra</code>, <code>myip</code>, <code>pwd</code>, <code>urlshortener</code>). Every workload there runs as non-root, drops all Linux capabilities, uses the <code>RuntimeDefault</code> seccomp profile and mounts a read-only root filesystem. <code>monitoring</code> is labelled <strong>privileged</strong>, because node-exporter uses the host network, PID namespace and filesystem, and Loki keeps its data on a hostPath. The remaining namespaces, including <code>flux-system</code>, <code>cloudflare</code>, <code>envoy-gateway-system</code>, <code>external-secrets</code> and <code>kube-system</code>, carry no Pod Security label.</p>
+        <p>Live node CPU, memory and pod counts are on the Cluster Overview dashboard, the home page of <a href="https://grafana.1ms.my/" target="_blank" rel="noopener">grafana.1ms.my</a>.</p>
+        <!-- HIDDEN: stale screenshot (k9s node list: three worker nodes on v1.32.1, May 2026). To restore, delete this line
+           and the closing line after the figure.
         <figure>
           <img src="/img/nodes.png" alt="k9s screenshot showing three OKE worker nodes with CPU, memory and pod allocations" loading="lazy" />
           <figcaption>OKE worker nodes — version, pod count, CPU and memory usage.</figcaption>
         </figure>
+        END HIDDEN: stale screenshot -->
       </div>
     </article>
 
@@ -492,18 +495,22 @@
         <span class="acc-tag">INGRESS</span>
         <div class="acc-titles">
           <h3>Networking and ingress</h3>
-          <div class="acc-meta">Envoy Gateway · Kubernetes Gateway API · ClusterIP only</div>
+          <div class="acc-meta">Envoy Gateway 1.2 · Gateway API v1.2.0 · ClusterIP only</div>
         </div>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>The cluster has no public IP address and no inbound firewall openings. There is no public load balancer attached to any Service. All ingress is delivered through outbound Cloudflare Tunnel connections — see the Cloudflare section.</p>
-        <p>Inside the cluster, <strong>Envoy Gateway 1.x</strong> implements the standard Kubernetes Gateway API. An <code>EnvoyProxy</code> custom resource explicitly pins the data-plane Service type to <code>ClusterIP</code>, overriding the default <code>LoadBalancer</code> behaviour. A single <code>Gateway</code> resource exposes one HTTP listener on port 80; <code>allowedRoutes.namespaces.from: All</code> permits <code>HTTPRoute</code> resources from any application namespace to attach without ReferenceGrants.</p>
+        <p>The worker nodes have no public IP addresses, and every Service in the cluster is <code>ClusterIP</code>, so there is no load balancer to reach. All application traffic arrives through outbound Cloudflare Tunnel connections — see the <a href="#acc-cf">Cloudflare section</a>.</p>
+        <p>Inside the cluster, <strong>Envoy Gateway 1.2</strong> (controller v1.2.8, Envoy proxy v1.32.4) implements the standard Kubernetes Gateway API; Flux applies the Gateway API v1.2.0 CRDs straight from the upstream repository. An <code>EnvoyProxy</code> custom resource explicitly pins the data-plane Service type to <code>ClusterIP</code>, overriding the default <code>LoadBalancer</code> behaviour. A single <code>Gateway</code> resource exposes one HTTP listener on port 80; <code>allowedRoutes.namespaces.from: All</code> permits <code>HTTPRoute</code> resources from any application namespace to attach without ReferenceGrants.</p>
         <p>Hostname-based routing:</p>
         <ul>
           <li><code>1ms.my</code> → <code>urlshortener</code> namespace (writer, reader, frontend Services selected by path)</li>
-          <li><code>aboutme.1ms.my</code> → <code>cv</code> namespace (<code>cv-frontend</code>)</li>
-          <li><code>infra.1ms.my</code> → <code>infra</code> namespace (this page)</li>
+          <li><code>aboutme.1ms.my</code> → <code>aboutme</code> namespace (<code>aboutme-frontend</code>)</li>
+          <li><code>cv.1ms.my</code> → no backend: an HTTPRoute in <code>aboutme</code> answers with a 301 redirect to <code>aboutme.1ms.my</code></li>
+          <li><code>infra.1ms.my</code> → <code>infra</code> namespace (<code>infra-frontend</code>, this page)</li>
+          <li><code>secrets.1ms.my</code> → <code>pwd</code> namespace (<code>pwd-frontend</code>)</li>
+          <li><code>myip.1ms.my</code> → <code>myip</code> namespace (<code>myip-frontend</code>)</li>
+          <li><code>grafana.1ms.my</code> → <code>monitoring</code> namespace (<code>grafana</code>)</li>
         </ul>
                 <div class="code-block">
           <div class="code-head">
@@ -555,7 +562,7 @@
     - <span class="k">matches</span>:
         - <span class="k">path</span>:
             <span class="k">type</span>: RegularExpression
-            <span class="k">value</span>: <span class="s">&quot;^/[a-zA-Z0-9]{6}$&quot;</span>
+            <span class="k">value</span>: <span class="s">&quot;^/[A-Za-z0-9-]{4,32}$&quot;</span>
       <span class="k">backendRefs</span>:
         - <span class="k">name</span>: urlshortener-reader
           <span class="k">port</span>: <span class="n">80</span>
@@ -577,23 +584,25 @@
         <span class="acc-tag">CLOUDFLARE</span>
         <div class="acc-titles">
           <h3>DNS, edge and tunnel — Cloudflare</h3>
-          <div class="acc-meta">Domain on Dynadot · DNS &amp; proxy on Cloudflare · 4 tunnel connectors</div>
+          <div class="acc-meta">Domain on Dynadot · DNS &amp; proxy on Cloudflare · 2 tunnel connectors</div>
         </div>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
         <ul>
           <li><strong>Registrar</strong> — the <code>1ms.my</code> domain is registered with <strong>Dynadot</strong>. The Dynadot domain has its nameservers delegated to Cloudflare, so Cloudflare hosts the authoritative DNS zone.</li>
-          <li><strong>DNS</strong> — zone <code>1ms.my</code> on Cloudflare. Each subdomain (apex, <code>cv</code>, <code>infra</code>) is a CNAME pointing at the homelab tunnel. Cloudflare creates these records automatically when public hostnames are added to the tunnel.</li>
+          <li><strong>DNS</strong> — zone <code>1ms.my</code> on Cloudflare. Each hostname the platform serves (apex, <code>aboutme</code>, <code>cv</code>, <code>infra</code>, <code>secrets</code>, <code>myip</code>, <code>grafana</code>) is a proxied CNAME pointing at the homelab tunnel. Cloudflare creates these records automatically when public hostnames are added to the tunnel.</li>
           <li><strong>Proxy (orange-cloud)</strong> — all traffic terminates TLS at Cloudflare's edge. This provides automatic TLS certificates, DDoS protection, edge caching of static assets, and HTTP analytics.</li>
-          <li><strong>Cloudflare Tunnel</strong> — <code>cloudflared</code> runs as a 2-replica Deployment inside the cluster and establishes outbound TLS connections to Cloudflare's edge. The tunnel currently reports HEALTHY with 4 connectors across Tel Aviv and Marseille edge POPs.</li>
-          <li><strong>Tunnel hostnames</strong> route each domain to the in-cluster Envoy data-plane Service over HTTP. The cluster never accepts unsolicited inbound traffic from the public internet.</li>
+          <li><strong>Cloudflare Tunnel</strong> — <code>cloudflared</code> runs as a 2-replica Deployment inside the cluster and opens outbound, encrypted QUIC connections to Cloudflare's edge. Each replica is one tunnel connector holding four connections, so the tunnel has 2 connectors and 8 connections, spread across Tel Aviv and Marseille edge POPs.</li>
+          <li><strong>Tunnel hostnames</strong> route each domain to the in-cluster Envoy data-plane Service over HTTP. No workload accepts connections from the public internet; every request comes in through the tunnel.</li>
         </ul>
-        <p>The DNS zone configuration:</p>
+        <!-- HIDDEN: stale screenshot (Cloudflare DNS records with only the apex, cv and infra, May 2026). To restore, delete this line
+           and the closing line after the figure.
         <figure>
           <img src="/img/cloudflare-dns.png" alt="Cloudflare DNS Records for 1ms.my showing apex, cv and infra CNAMEs proxied through Cloudflare" loading="lazy" />
           <figcaption>Cloudflare DNS Records for <code>1ms.my</code> — all proxied (orange-cloud).</figcaption>
         </figure>
+        END HIDDEN: stale screenshot -->
                 <div class="code-block">
           <div class="code-head">
             <span class="lbl">cloudflared — ExternalSecret + Deployment</span>
@@ -710,20 +719,21 @@
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>The cluster's desired state is declared entirely in the <a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener"><strong>AaronShemtov/personal-k8s</strong></a> repository. Flux reconciles the cluster against this repository every minute. The repository is the single source of truth — there is no production change that is not first a Git commit.</p>
+        <p>The cluster's desired state is declared in the <a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener"><strong>AaronShemtov/personal-k8s</strong></a> repository. Flux reconciles the cluster against this repository every minute. Apart from the add-ons OKE manages itself in <code>kube-system</code>, every component the platform runs on — ingress, tunnel, secrets, monitoring and all seven application namespaces — is declared there and applied by Flux.</p>
         <p>Six Flux controllers run in the <code>flux-system</code> namespace:</p>
         <ul>
           <li><code>source-controller</code> — pulls Git, OCI and Helm sources.</li>
           <li><code>kustomize-controller</code> — applies Kustomize overlays.</li>
           <li><code>helm-controller</code> — reconciles HelmReleases.</li>
-          <li><code>notification-controller</code> — emits alerts and receives webhooks.</li>
+          <li><code>notification-controller</code> — sends reconciliation errors and image updates to Telegram. No webhook receivers are configured; Flux polls Git.</li>
           <li><code>image-reflector-controller</code> — scans container registries for new tags.</li>
           <li><code>image-automation-controller</code> — commits image tag updates back to Git.</li>
         </ul>
-        <p>Two root Kustomizations layer the cluster:</p>
+        <p>Three Kustomizations apply this repository:</p>
         <ul>
-          <li><code>infrastructure</code> — applies everything under <code>./infrastructure/</code> (Gateway API CRDs, Envoy Gateway, External Secrets Operator, cloudflared, image-automation, metrics-server).</li>
-          <li><code>applications</code> — applies everything under <code>./applications/</code> (urlshortener, cv, infra). Depends on <code>infrastructure</code> being reconciled first.</li>
+          <li><code>flux-system</code> — the bootstrap Kustomization, with <code>path: ./</code> and a 1-minute interval. It applies the Flux components and, because it points at the repository root, every object under the two directories below as well.</li>
+          <li><code>infrastructure</code> — applies everything under <code>./infrastructure/</code> (Gateway API CRDs, Envoy Gateway, External Secrets Operator, cloudflared, image automation, metrics-server, the monitoring stack with its dashboards, and Flux notifications to Telegram).</li>
+          <li><code>applications</code> — applies everything under <code>./applications/</code> (urlshortener, aboutme, infra, pwd, myip, agents, ai-sre-agent). Depends on <code>infrastructure</code> being reconciled first; <code>flux-system</code> applies the same objects without that ordering.</li>
         </ul>
         <p>The Git connection uses SSH with a write-enabled deploy key. The same key Flux uses to <em>pull</em> manifests is reused to <em>push</em> image tag updates produced by the Image Automation pipeline.</p>
                 <div class="code-block">
