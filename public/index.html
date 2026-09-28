@@ -70,7 +70,9 @@
   .foot-nav a:hover { color: var(--accent); }
   .foot-nav a:hover .ribbon-ext,
   .foot-nav a:hover .ribbon-sub { color: var(--accent); }
-  .foot-nav a > span:first-child { display: block; line-height: 1.1; }
+  /* Inline, so the external arrow stays beside "grafana" and "source";
+     the 1ms.my subtitle still stacks, because .ribbon-sub is a block. */
+  .foot-nav a > span:first-child { line-height: 1.1; }
   /* Observability stack section: the component table scrolls sideways on
      narrow screens instead of widening the page, and the blocks under it keep
      the spacing used elsewhere on the page. */
@@ -1643,10 +1645,13 @@ $ curl -X POST https://1ms.my/shorten \
       </figure>
     </div>
 
+    <!-- HIDDEN: "next" banner (planned work). To restore, delete this line and
+      the closing line after the banner.
     <div class="proto-banner obs-next">
       <b>next</b>
       <span>Route Alertmanager alerts to Telegram; instrument the services for tracing and add a Tempo datasource to Grafana (Tempo already receives OTLP through Alloy); add <code>/metrics</code> to the Go URL shortener, which request-rate and latency SLOs will need.</span>
     </div>
+    END HIDDEN: next banner -->
   </section>
 
   <!-- HIDDEN: Observability, SLO targets (prototype), replaced by the
@@ -1711,7 +1716,9 @@ $ curl -X POST https://1ms.my/shorten \
     <div class="foot-nav">
       <a href="https://1ms.my/"><span>1ms.my</span><span class="ribbon-sub">link shortener</span></a>
       <a href="https://aboutme.1ms.my/">about me</a>
-      <a href="https://infra.1ms.my/">platform</a>
+      <a href="https://infra.1ms.my/">platform architecture</a>
+      <a href="#acc-agents">agentic AI</a>
+      <a href="#acc-sre">AI SRE agent</a>
       <a href="https://secrets.1ms.my/">secrets toolkit</a>
       <a href="https://myip.1ms.my/">IP checker</a>
       <a href="https://grafana.1ms.my/" target="_blank" rel="noopener"><span>grafana</span><span class="ribbon-ext">↗</span></a>
