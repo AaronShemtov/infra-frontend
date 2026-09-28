@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Platform Architecture — infra.1ms.my</title>
-<meta name="description" content="The Kubernetes platform behind 1ms.my, aboutme.1ms.my and infra.1ms.my — OCI, OKE, Flux GitOps, Cloudflare, External Secrets + Vault." />
+<meta name="description" content="The Kubernetes platform behind 1ms.my and its subdomains (aboutme, infra, secrets, myip, grafana) — OCI, OKE, Flux GitOps, Cloudflare, External Secrets + Vault." />
 <script>
   // theme toggle (early to avoid flash)
   (function(){ try { var t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
@@ -137,18 +137,19 @@
           <span class="tag-pill">image automation</span>
           <span class="tag-pill">declarative ingress</span>
           <span class="tag-pill">vault-sourced secrets</span>
-          <span class="tag-pill">zero static credentials</span>
+          <span class="tag-pill">zero secrets in git</span>
         </div>
 
         <p class="lede" style="margin-top:18px;">
-          Three production sites hosted, all operated through GitOps from public GitHub. There is no manual <code>kubectl apply</code> against the cluster — every change in the cluster is the result of a Git commit. The repository layout is intentionally split across multiple small repositories, each with its own CI/CD pipeline, to model the structure of a real microservices platform.
+          Six public sites are hosted, all operated through GitOps from public GitHub, and two AI agent systems run next to them (<a href="#acc-agents">agents</a>, <a href="#acc-sre">SRE agent</a>). Every site and every platform component on top of the managed OKE cluster is declared in Git and applied by Flux, so releases reach the cluster as Git commits. The code is split across nine small public repositories, eight services with their own CI pipelines and one GitOps repository, to model the structure of a real microservices platform.
         </p>
 
         <ul class="site-list">
           <li><a href="https://1ms.my/"><span class="dot-i"></span><span><span class="name">1ms.my</span> <span class="desc">— URL shortener · Go backend, nginx frontend</span></span><span style="color:var(--mute)">↗</span></a></li>
-          <li><a href="https://aboutme.1ms.my/"><span class="dot-i"></span><span><span class="name">aboutme.1ms.my</span> <span class="desc">— About Me with downloadable CV</span></span><span style="color:var(--mute)">↗</span></a></li>
+          <li><a href="https://aboutme.1ms.my/"><span class="dot-i"></span><span><span class="name">aboutme.1ms.my</span> <span class="desc">— About Me: profile, certifications, stack and experience</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li><span class="dot-i"></span><span><span class="name">infra.1ms.my</span> <span class="desc">— the page you are reading</span></span><span style="color:var(--accent);font-size:11px">YOU ARE HERE</span></li>
-          <li><a href="https://secrets.1ms.my/"><span class="dot-i"></span><span><span class="name">secrets.1ms.my</span> <span class="desc">— client-side cryptographic password generator</span></span><span style="color:var(--mute)">↗</span></a></li>
+          <li><a href="https://secrets.1ms.my/"><span class="dot-i"></span><span><span class="name">secrets.1ms.my</span> <span class="desc">— client-side secrets toolkit: passwords, tokens, htpasswd, k8s Secrets</span></span><span style="color:var(--mute)">↗</span></a></li>
+          <li><a href="https://myip.1ms.my/"><span class="dot-i"></span><span><span class="name">myip.1ms.my</span> <span class="desc">— public IPv4 / IPv6 and approximate location checker</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li><a href="https://grafana.1ms.my/"><span class="dot-i"></span><span><span class="name">grafana.1ms.my</span> <span class="desc">— public read-only observability dashboards</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li class="ext"><a href="https://github.com/AaronShemtov"><span class="gh-mark">⌘</span><span><span class="name">github.com/AaronShemtov</span> <span class="desc">— all source repositories</span></span><span style="color:var(--mute)">↗</span></a></li>
         </ul>
@@ -160,26 +161,26 @@
           <span class="live-mark">live</span>
         </header>
         <dl>
-          <dt>context</dt><dd>personal-Israel</dd>
-          <dt>cluster</dt><dd>cluster-ce2vlbatwta</dd>
-          <dt>region</dt><dd>il-jerusalem-1 · TLV</dd>
-          <dt>k8s</dt><dd>v1.32.1</dd>
+          <dt>cloud</dt><dd>OCI · OKE</dd>
+          <dt>cni</dt><dd>OCI VCN-Native</dd>
+          <dt>region</dt><dd>il-jerusalem-1 · MTZ</dd>
+          <dt>k8s</dt><dd>v1.34.10 · nodes v1.33</dd>
           <dt>flux</dt><dd>v2.6.4 · 6 controllers</dd>
-          <dt>nodes</dt><dd>3 × Ampere A1 <b>ARM64</b></dd>
-          <dt>pods</dt><dd>~63</dd>
-          <dt>app ns</dt><dd>4 tenants</dd>
-          <dt>repos</dt><dd>5 public</dd>
+          <dt>nodes</dt><dd>2 × Ampere A1 <b>ARM64</b></dd>
+          <dt>pods</dt><dd>~66</dd>
+          <dt>app ns</dt><dd>7 tenants</dd>
+          <dt>repos</dt><dd>9 public</dd>
           <div class="divider"></div>
           <dt>ingress</dt><dd>Envoy Gateway · ClusterIP</dd>
-          <dt>edge</dt><dd>Cloudflare · 4 connectors</dd>
+          <dt>edge</dt><dd>Cloudflare · 2 connectors</dd>
           <dt>secrets</dt><dd>OCI Vault · ESO</dd>
           <dt>data</dt><dd>Autonomous JSON DB</dd>
           <div class="divider"></div>
-          <dt>inbound</dt><dd><b>0 ports</b></dd>
-          <dt>static creds</dt><dd><b>0</b></dd>
-          <dt>kubectl apply</dt><dd><b>0</b></dd>
+          <dt>app inbound</dt><dd><b>0 ports</b> · tunnel only</dd>
+          <dt>creds in git</dt><dd><b>0</b></dd>
+          <dt>delivery</dt><dd>Git commit → Flux</dd>
           <dt>operator</dt><dd>1 · solo</dd>
-          <dt>lead time</dt><dd>~3 min · git → pod</dd>
+          <dt>lead time</dt><dd>~3.5 min · git → pod</dd>
         </dl>
       </aside>
     </div>
@@ -191,52 +192,59 @@
       <span class="kpi-rule"></span>
     </div>
     <div class="kpi">
-      <div class="kpi-cell"><div class="kpi-num">5<span class="unit">public repos</span></div><div class="kpi-lbl">one per concern</div></div>
-      <div class="kpi-cell"><div class="kpi-num">3<span class="unit">worker nodes</span></div><div class="kpi-lbl">Ampere A1 · ARM64</div></div>
-      <div class="kpi-cell"><div class="kpi-num">~63<span class="unit">pods</span></div><div class="kpi-lbl">app + platform + monitoring</div></div>
-      <div class="kpi-cell"><div class="kpi-num">4<span class="unit">app ns</span></div><div class="kpi-lbl">tenant isolation</div></div>
+      <div class="kpi-cell"><div class="kpi-num">9<span class="unit">public repos</span></div><div class="kpi-lbl">8 services + 1 GitOps repo</div></div>
+      <div class="kpi-cell"><div class="kpi-num">2<span class="unit">worker nodes</span></div><div class="kpi-lbl">Ampere A1 · ARM64 · 2 pools</div></div>
+      <div class="kpi-cell"><div class="kpi-num">~66<span class="unit">pods</span></div><div class="kpi-lbl">app + platform + monitoring</div></div>
+      <div class="kpi-cell"><div class="kpi-num">7<span class="unit">app ns</span></div><div class="kpi-lbl">PSS restricted on each</div></div>
       <div class="kpi-cell"><div class="kpi-num">6<span class="unit">controllers</span></div><div class="kpi-lbl">Flux v2.6.4</div></div>
-      <div class="kpi-cell"><div class="kpi-num">4<span class="unit">connectors</span></div><div class="kpi-lbl">Cloudflare Tunnel · TLV + MRS</div></div>
-      <div class="kpi-cell"><div class="kpi-num">~3<span class="unit">min</span></div><div class="kpi-lbl">git push → running pod</div></div>
-      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">inbound</span></div><div class="kpi-lbl">no LoadBalancer · no public IP</div></div>
-      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">static creds</span></div><div class="kpi-lbl">Vault · Instance Principal</div></div>
-      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">kubectl apply</span></div><div class="kpi-lbl">every change is a Git commit</div></div>
-      <div class="kpi-cell"><div class="kpi-num todo">—<span class="unit">uptime</span></div><div class="kpi-lbl">[TODO] real 30d availability</div></div>
-      <div class="kpi-cell"><div class="kpi-num todo">—<span class="unit">deploys / 30d</span></div><div class="kpi-lbl">[TODO] count from GH Actions</div></div>
+      <div class="kpi-cell"><div class="kpi-num">2<span class="unit">connectors</span></div><div class="kpi-lbl">Cloudflare Tunnel · TLV + MRS</div></div>
+      <div class="kpi-cell"><div class="kpi-num">~3.5<span class="unit">min</span></div><div class="kpi-lbl">git push → running pod</div></div>
+      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">inbound</span></div><div class="kpi-lbl">no LoadBalancer · private worker nodes</div></div>
+      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">creds in git</span></div><div class="kpi-lbl">Vault · ESO · Instance Principal</div></div>
+      <div class="kpi-cell"><div class="kpi-num">8<span class="unit">HelmReleases</span></div><div class="kpi-lbl">+ 4 Kustomizations, from Git</div></div>
+      <div class="kpi-cell"><div class="kpi-num">8<span class="unit">images</span></div><div class="kpi-lbl">under Flux image automation</div></div>
+      <div class="kpi-cell"><div class="kpi-num">123<span class="unit">deploys / 30d</span></div><div class="kpi-lbl">Flux image-automation commits</div></div>
     </div>
 
     <!-- LIVE STATUS -->
     <div class="live-bar" id="live-bar">
       <div class="live-svc">
-        <span class="live-dot" data-url="https://1ms.my/"></span>
+        <span class="live-dot" data-url="https://1ms.my/healthz"></span>
         <div>
           <div class="name">1ms.my</div>
           <div class="meta" data-status="1ms.my">checking…</div>
         </div>
       </div>
       <div class="live-svc">
-        <span class="live-dot" data-url="https://aboutme.1ms.my/"></span>
+        <span class="live-dot" data-url="https://aboutme.1ms.my/healthz"></span>
         <div>
           <div class="name">aboutme.1ms.my</div>
           <div class="meta" data-status="aboutme.1ms.my">checking…</div>
         </div>
       </div>
       <div class="live-svc">
-        <span class="live-dot" data-url="https://infra.1ms.my/"></span>
+        <span class="live-dot" data-url="https://infra.1ms.my/healthz"></span>
         <div>
           <div class="name">infra.1ms.my</div>
           <div class="meta" data-status="infra.1ms.my">checking…</div>
         </div>
       </div>
       <div class="live-svc">
-        <span class="live-dot" data-url="https://secrets.1ms.my/"></span>
+        <span class="live-dot" data-url="https://secrets.1ms.my/healthz"></span>
         <div>
           <div class="name">secrets.1ms.my</div>
           <div class="meta" data-status="secrets.1ms.my">checking…</div>
         </div>
       </div>
       <div class="live-svc">
-        <span class="live-dot" data-url="https://grafana.1ms.my/"></span>
+        <span class="live-dot" data-url="https://myip.1ms.my/healthz"></span>
+        <div>
+          <div class="name">myip.1ms.my</div>
+          <div class="meta" data-status="myip.1ms.my">checking…</div>
+        </div>
+      </div>
+      <div class="live-svc">
+        <span class="live-dot" data-url="https://grafana.1ms.my/healthz"></span>
         <div>
           <div class="name">grafana.1ms.my</div>
           <div class="meta" data-status="grafana.1ms.my">checking…</div>
@@ -244,7 +252,7 @@
       </div>
     </div>
     <div class="live-disclaimer">
-      ▸ live status is fetched from the public domains on page load. CORS may prevent the page from reading the response body — the dot turns green if the request completes without a network error, red otherwise. <span style="color:var(--warn)">[TODO]</span> wire to a real <code>/healthz</code> endpoint once observability stack ships.
+      ▸ live status: on page load your browser requests each site's <code>/healthz</code> endpoint. CORS keeps the response body unreadable to this page, so the dot turns green if the request completes without a network error, red otherwise.
     </div>
   </section>
 
@@ -254,9 +262,9 @@
       <span class="sec-num">01 ·</span>
       <h2 class="sec-title">Architecture overview</h2>
     </div>
-    <p class="sec-sub">Request flow from a user's browser down to the application pods and the managed database. <span class="diagram-hint">▸ click any highlighted node to jump to its section</span></p>
+    <p class="sec-sub">Request flow from a user's browser down to the application pods and the managed database. The two AI agent namespaces at the top have no public route: they long-poll Telegram over outbound connections. <span class="diagram-hint">▸ click any highlighted node to jump to its section</span></p>
     <div class="diagram-wrap">
-      <svg class="diagram" viewBox="0 0 760 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Application architecture diagram">
+      <svg class="diagram" viewBox="0 0 760 880" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Application architecture diagram">
         <defs>
           <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
             <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6"></path>
@@ -285,6 +293,21 @@
         <text x="380" y="283" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">cloudflared × 2</text>
         <text x="380" y="302" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">ns: cloudflare</text>
         </g>
+        <!-- AI agent namespaces: no HTTPRoute, outbound only, so no arrow from the gateway -->
+        <g class="clickable" data-acc="SRE">
+        <rect x="50" y="255" width="160" height="88" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="130" y="277" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: ai-sre-agent</text>
+        <rect x="60" y="289" width="140" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="130" y="309" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">ai-sre-agent × 1</text>
+        <text x="130" y="324" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">LangGraph RCA · approvals</text>
+        </g>
+        <g class="clickable" data-acc="AGENTS">
+        <rect x="550" y="255" width="160" height="88" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="630" y="277" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: agents</text>
+        <rect x="560" y="289" width="140" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="630" y="309" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">agents × 3 · MCP × 3</text>
+        <text x="630" y="324" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">lead · coder · reviewer</text>
+        </g>
         <line x1="380" y1="315" x2="380" y2="345" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
         <g class="clickable" data-acc="INGRESS">
         <rect x="220" y="350" width="320" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
@@ -296,9 +319,9 @@
         <line x1="450" y1="415" x2="450" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
         <line x1="610" y1="415" x2="610" y2="460" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
         <text x="145" y="438" font-size="10" fill="currentColor" opacity="0.7">1ms.my</text>
-        <text x="305" y="438" font-size="10" fill="currentColor" opacity="0.7">aboutme.1ms.my</text>
-        <text x="465" y="438" font-size="10" fill="currentColor" opacity="0.7">infra.1ms.my</text>
-        <text x="625" y="438" font-size="10" fill="currentColor" opacity="0.7">pwd · grafana</text>
+        <text x="305" y="438" font-size="10" fill="currentColor" opacity="0.7">aboutme · secrets</text>
+        <text x="465" y="438" font-size="10" fill="currentColor" opacity="0.7">infra · myip</text>
+        <text x="625" y="438" font-size="10" fill="currentColor" opacity="0.7">grafana.1ms.my</text>
         <g class="clickable" data-acc="SHORTENER">
         <rect x="50" y="465" width="170" height="190" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
         <text x="135" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: urlshortener</text>
@@ -312,37 +335,49 @@
         <text x="135" y="616" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">frontend × 2</text>
         <text x="135" y="631" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">nginx · static</text>
         </g>
-        <g class="clickable" data-acc="SHORTENER">
-        <rect x="230" y="465" width="130" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
-        <text x="295" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: cv</text>
-        <rect x="240" y="500" width="110" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
-        <text x="295" y="520" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">cv-frontend × 2</text>
-        <text x="295" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">static CV</text>
+        <g class="clickable" data-acc="PODS">
+        <rect x="230" y="465" width="130" height="165" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <text x="295" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: aboutme</text>
+        <rect x="236" y="500" width="118" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="295" y="520" font-size="10.5" font-weight="600" fill="currentColor" text-anchor="middle">aboutme-frontend × 2</text>
+        <text x="295" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">About Me + CV</text>
+        <text x="295" y="562" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: pwd</text>
+        <rect x="236" y="575" width="118" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="295" y="595" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">pwd-frontend × 2</text>
+        <text x="295" y="610" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">secrets toolkit</text>
         </g>
-        <g class="clickable" data-acc="SHORTENER">
-        <rect x="370" y="465" width="130" height="100" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
+        <g class="clickable" data-acc="PODS">
+        <rect x="370" y="465" width="130" height="165" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
         <text x="435" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: infra</text>
         <rect x="380" y="500" width="110" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
         <text x="435" y="520" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">infra-frontend × 2</text>
         <text x="435" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">this page</text>
+        <text x="435" y="562" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: myip</text>
+        <rect x="380" y="575" width="110" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="435" y="595" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">myip-frontend × 2</text>
+        <text x="435" y="610" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">public IP checker</text>
         </g>
-        <g class="clickable" data-acc="SHORTENER">
+        <g class="clickable" data-acc="OBS">
         <rect x="510" y="465" width="200" height="190" rx="6" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"></rect>
-        <text x="610" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: pwd  /  ns: monitoring</text>
+        <text x="610" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: monitoring</text>
         <rect x="520" y="500" width="180" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
-        <text x="610" y="520" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">pwd-frontend × 2</text>
-        <text x="610" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">client-side password gen</text>
+        <text x="610" y="520" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">grafana × 1</text>
+        <text x="610" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">public viewer · admin login</text>
         <rect x="520" y="548" width="180" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
-        <text x="610" y="568" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">grafana × 1</text>
-        <text x="610" y="583" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">public viewer · admin login</text>
+        <text x="610" y="568" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">prometheus · alertmanager</text>
+        <text x="610" y="583" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">metrics · alerting</text>
         <rect x="520" y="596" width="180" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
-        <text x="610" y="616" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">prometheus + loki</text>
-        <text x="610" y="631" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">scrape · log aggregation</text>
+        <text x="610" y="616" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">loki · tempo · alloy</text>
+        <text x="610" y="631" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">log + trace stores · collector</text>
         </g>
 
-        <!-- Scrape and log-ship lines from apps to monitoring (dashed, lighter) -->
-        <path d="M 215 565 Q 350 670 510 615" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3" opacity="0.55" marker-end="url(#arrow-dim)"></path>
-        <text x="320" y="685" font-size="9.5" fill="currentColor" opacity="0.55" text-anchor="middle" font-style="italic">scrape /metrics · ship logs</text>
+        <!-- Log-ship and scrape lines into monitoring (dashed, lighter). urlshortener has no
+             /metrics endpoint, so only its logs travel; the agents' /metrics are scraped. -->
+        <path d="M 220 640 Q 365 690 510 640" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3" opacity="0.55" marker-end="url(#arrow-dim)"></path>
+        <text x="365" y="684" font-size="9.5" fill="currentColor" opacity="0.55" text-anchor="middle" font-style="italic">ship logs (Alloy)</text>
+        <line x1="575" y1="345" x2="575" y2="461" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3" opacity="0.55" marker-end="url(#arrow-dim)"></line>
+        <text x="582" y="378" font-size="9.5" fill="currentColor" opacity="0.55" font-style="italic">scrape</text>
+        <text x="582" y="390" font-size="9.5" fill="currentColor" opacity="0.55" font-style="italic">/metrics</text>
 
         <line x1="100" y1="655" x2="100" y2="780" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
         <line x1="170" y1="655" x2="170" y2="780" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
