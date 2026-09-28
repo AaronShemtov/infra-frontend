@@ -97,8 +97,8 @@
         <a href="https://aboutme.1ms.my/">about<br>me</a>
         <a href="https://1ms.my/">link<br>shortener</a>
         <a href="https://infra.1ms.my/" class="current">Kubernetes platform<br>architecture</a>
-        <a>Agentic AI<br>architecture</a>
-        <a>AI SRE<br>agent</a>
+        <a href="#acc-agents">Agentic AI<br>architecture</a>
+        <a href="#acc-sre">AI SRE<br>agent</a>
         <a href="https://secrets.1ms.my/">secrets<br>toolkit</a>
         <a href="https://myip.1ms.my/">IP<br>checker</a>
       </nav>
@@ -374,6 +374,8 @@
         <a href="#acc-sec">secrets</a>
         <a href="#acc-data">database</a>
         <a href="#acc-app">shortener</a>
+        <a href="#acc-agents">agents</a>
+        <a href="#acc-sre">sre</a>
         <a href="#acc-pods">pods</a>
         <a href="#acc-obs">obs</a>
         <a href="#acc-repos">repos</a>
@@ -1059,6 +1061,123 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
       </div>
     </article>
 
+        <!-- 9a. AGENTIC AI PLATFORM -->
+    <article class="acc" id="acc-agents">
+      <div class="acc-head">
+        <span class="acc-tag">AGENTS</span>
+        <div class="acc-titles">
+          <h3>Agentic AI platform — lead, coder and reviewer agents</h3>
+          <div class="acc-meta">Telegram → lead agent → coder · reviewer · MCP servers for GitHub, cluster and Cloudflare</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>LLM agents that do engineering work on this platform, driven from Telegram. They run in the <code>agents</code> namespace as six single-replica Deployments from one repository, <a href="https://github.com/AaronShemtov/ai-agents-platform" target="_blank" rel="noopener">AaronShemtov/ai-agents-platform</a>: five run the same image with different commands, and the GitHub MCP server is GitHub's own image. An agent is configuration rather than code: a profile in <code>agents/*.yaml</code> sets its system prompt, the tools it may call, its model and its step and token limits. CI runs ruff, imports every entrypoint and runs the test suite, then builds the image on a native arm64 runner.</p>
+        <ul>
+          <li><strong>agent-lead</strong> — the only agent with a Telegram bot, and the one a person talks to. It reads the cluster, works in GitHub and Cloudflare, and hands work to the other two. The bot answers allow-listed Telegram users only; an empty list refuses everyone.</li>
+          <li><strong>agent-coder</strong> — writes application code, Dockerfiles, workflows and manifests. It has no bot, because Telegram never delivers one bot's messages to another; the lead reaches it over the cluster network as one more MCP tool, <code>coder__ask</code>, checked and logged like any other call.</li>
+          <li><strong>agent-reviewer</strong> — reads a change and answers <code>APPROVE</code> or <code>CHANGES REQUESTED</code>; the lead's instructions send every change to it before the work is reported as done. It runs on a different model from the coder, so the review does not inherit the author's blind spots, and it cannot write: its profile allows only read tools and its GitHub write mode is read-only.</li>
+          <li><strong>mcp-github, mcp-cluster, mcp-cloudflare</strong> — the tools, served over MCP's streamable HTTP transport inside the cluster.</li>
+        </ul>
+
+        <h4 style="margin-top:24px;">One credential boundary per pod</h4>
+        <p>The limits that matter sit outside the model's reach, in Kubernetes objects and server flags kept in Git:</p>
+        <ul>
+          <li><strong>mcp-cluster</strong> — the only identity in the namespace with Kubernetes permissions: a ClusterRole with <code>get</code>, <code>list</code> and <code>watch</code> on pods, logs, events, workloads, Services, ConfigMaps and routes. No Secrets, no <code>exec</code>, no write verb. Its readiness probe calls the API server, so broken RBAC shows up as NotReady.</li>
+          <li><strong>mcp-cloudflare</strong> — the only holder of the Cloudflare API token. It exposes 14 tools written for this platform (DNS records, WAF rules, tunnel hostnames, cache purge) and nothing else, and its readiness probe checks the token against Cloudflare.</li>
+          <li><strong>mcp-github</strong> — GitHub's own MCP server, self-hosted so that its toolsets are fixed by flags in Git and enforced server-side. It holds no credential: each agent sends its GitHub token with every request.</li>
+          <li><strong>The agents</strong> — hold the model API key and the GitHub token, and have no Kubernetes permissions at all.</li>
+        </ul>
+
+        <h4 style="margin-top:24px;">Local policy and human approval</h4>
+        <p>Every tool call the model proposes passes a policy check inside the agent before it is sent, and the check reads the arguments, not only the tool name. Each profile also limits which tools the model sees at all; <code>github__delete_*</code> is denied to all three agents.</p>
+        <ul>
+          <li><strong>Reads pass.</strong> A tool counts as a read only by its verb (<code>get_</code>, <code>list_</code>, <code>search_</code> and similar). Anything else is treated as a write, and a tool from an unknown server needs approval.</li>
+          <li><strong>The GitOps repository takes pull requests only.</strong> A write to the default branch of <code>personal-k8s</code> is refused in every write mode. Creating a branch or a pull request is allowed, and merging one asks for approval, because Flux applies the result to the live cluster.</li>
+          <li><strong>Cloudflare changes and delegation to the coder ask first.</strong> A bad commit can be reverted; a deleted DNS record takes a site offline until someone notices. Cluster writes are refused outright, and the ClusterRole could not perform them anyway.</li>
+          <li><strong>Approval happens in Telegram.</strong> The lead posts the tool and its complete arguments, with Approve and Reject buttons on the last message, and waits. No answer within ten minutes counts as a rejection, and the allow-list is checked again on the button press. The coder and the reviewer have nobody to ask, so a call that needs approval is refused there and reported back to the lead.</li>
+        </ul>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">Agent profile — ai-agents-platform/agents/reviewer.yaml (excerpt)</span>
+          </div>
+<pre class="code"><code><span class="k">model</span>: <span class="s">"gpt-5.1-codex-max"</span>
+<span class="k">mcp_servers</span>:
+  - github
+  - cluster
+<span class="k">allow_tools</span>:
+  - <span class="s">"github__get_*"</span>
+  - <span class="s">"github__list_*"</span>
+  - <span class="s">"github__search_*"</span>
+  - <span class="s">"github__pull_request_read"</span>
+  - <span class="s">"github__issue_read"</span>
+  - <span class="s">"cluster__*"</span>
+<span class="k">deny_tools</span>:
+  - <span class="s">"github__create_*"</span>
+  - <span class="s">"github__update_*"</span>
+  - <span class="s">"github__delete_*"</span>
+  - <span class="s">"github__merge_*"</span>
+  - <span class="s">"github__push_*"</span>
+<span class="k">max_steps</span>: 20</code></pre>
+        </div>
+
+        <h4 style="margin-top:24px;">Models and memory</h4>
+        <ul>
+          <li><strong>Azure AI Foundry</strong> — the lead defaults to <code>gpt-5.6-luna</code> and can be switched per chat with <code>/model</code>; the coder runs <code>gpt-5.3-codex</code> and the reviewer <code>gpt-5.1-codex-max</code>. The client sends each deployment to the Responses or the Chat Completions API as configured, and web search runs as an Azure-hosted tool on the Responses API.</li>
+          <li><strong>Optional self-hosted model</strong> — Qwen3.6-35B-A3B on Ollama, on a CPU-only machine outside the cluster, reached through its own Cloudflare Tunnel; requests without a shared secret are refused at the edge. Chosen with <code>/model</code>, it gets a short prompt and no tools.</li>
+          <li><strong>Durable memory</strong> — the lead's chat history and the facts it keeps about the user live in the same Autonomous Database as the URL shortener, but in a schema of their own with no grants on the shortener's data. The agent reaches it through ORDS REST-Enabled SQL: plain HTTPS, no Oracle client and no wallet. History is replayed after a restart; <code>/memories</code> lists the stored facts and <code>/forget</code> removes one.</li>
+        </ul>
+
+        <h4 style="margin-top:24px;">Telemetry and audit</h4>
+        <p>The lead and the coder expose Prometheus metrics under the OpenTelemetry GenAI names (<code>gen_ai_client_token_usage</code>, <code>gen_ai_client_operation_duration_seconds</code>, <code>gen_ai_execute_tool_duration_seconds</code> and the agent-invocation histograms), plus <code>agent_*</code> series for policy decisions, approvals and how long a person took to answer. They feed the <a href="https://grafana.1ms.my/d/ai-agents/ai-agents" target="_blank" rel="noopener">AI Agents</a> dashboard, next to Azure Monitor metrics for the model resource. Every tool call is also one JSON audit line in the pod log, collected into Loki, with the arguments hashed rather than written out.</p>
+      </div>
+    </article>
+
+    <!-- 9b. AI SRE AGENT -->
+    <article class="acc" id="acc-sre">
+      <div class="acc-head">
+        <span class="acc-tag">SRE</span>
+        <div class="acc-titles">
+          <h3>AI SRE agent — incident investigation with approval-gated fixes</h3>
+          <div class="acc-meta">Telegram · LangGraph · Gemini 2.5 Flash-Lite · reads broadly, patches two things</div>
+        </div>
+        <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
+      </div>
+      <div class="acc-body">
+        <p>A single-purpose agent in its own namespace, <code>ai-sre-agent</code>, from <a href="https://github.com/AaronShemtov/ai-sre-agent" target="_blank" rel="noopener">AaronShemtov/ai-sre-agent</a>. Asked in Telegram why a workload is unhealthy, for example <em>why does urlshortener-reader keep restarting</em>, it reads the live cluster and replies with a root-cause analysis: probable cause, timeline, blast radius, the evidence behind it and a suggested fix. When one of two safe fixes applies, it offers to run it.</p>
+
+        <h4 style="margin-top:24px;">Investigation flow</h4>
+        <p>A LangGraph graph with fixed steps decides which cluster calls happen. The model only reads what was collected and proposes; it never calls the Kubernetes API itself.</p>
+        <ol>
+          <li><strong>Gather, with no model involved.</strong> The namespace is matched from the question against the real namespace list. The agent then reads pods and events and, for up to five unhealthy pods, their details and last 80 log lines, including the previous container's logs after a crash, plus the Deployment, Service and Endpoints behind them.</li>
+          <li><strong>Analyse, in one model call.</strong> Gemini 2.5 Flash-Lite turns the signals into the RCA as strict JSON, is told to cite only what is in the data, and may propose at most one action. A proposal naming anything other than the two registered fixes is dropped. One call per investigation keeps the agent inside the free tier's daily request quota.</li>
+          <li><strong>Approve.</strong> A proposed action arrives with Approve and Reject buttons, and nothing changes until an allow-listed user presses Approve. The user is checked again on the button press, since anyone who can see the message can press it. An empty allow-list refuses everyone.</li>
+          <li><strong>Execute and verify.</strong> A second graph runs the approved action and reads the result back: ready replicas after a restart, ready endpoints after a selector fix.</li>
+        </ol>
+
+        <h4 style="margin-top:24px;">What it can and cannot change</h4>
+        <ul>
+          <li><strong>Two actions</strong> — a rolling restart of a Deployment, and a new selector for a Service whose selector no longer matches its pods' labels. Its ClusterRole grants <code>patch</code> on Deployments and Services and no other write.</li>
+          <li><strong>Read access</strong> — <code>get</code>, <code>list</code> and <code>watch</code> on pods, logs, events, workloads, Services, Endpoints, ConfigMaps, nodes, namespaces, Ingresses and HTTPRoutes. No Secrets, no <code>exec</code> or <code>attach</code>, no create or delete, no wildcards.</li>
+          <li><strong>Git still wins</strong> — on objects Flux manages, the lasting fix is a commit: Flux reconciles the applications from Git every 10 minutes and puts back the fields it manages. The lead agent above works the other way round and changes the cluster only through a pull request.</li>
+          <li><strong>Limits</strong> — logs come from the Kubernetes API, not yet from Loki or Prometheus. A pending approval lives in memory and is lost if the pod restarts. It runs as one replica with the Recreate strategy, because a Telegram bot token allows only one poller.</li>
+        </ul>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="lbl">ClusterRole ai-sre-agent — its only two write rules (personal-k8s/applications/ai-sre-agent/rbac.yaml)</span>
+          </div>
+<pre class="code"><code><span class="c"># ---- SAFE WRITE: rollout restart (patch deployment template) ----</span>
+- <span class="k">apiGroups</span>: [<span class="s">"apps"</span>]
+  <span class="k">resources</span>: [<span class="s">"deployments"</span>]
+  <span class="k">verbs</span>: [<span class="s">"patch"</span>]
+<span class="c"># ---- SAFE WRITE: fix service selector ----</span>
+- <span class="k">apiGroups</span>: [<span class="s">""</span>]
+  <span class="k">resources</span>: [<span class="s">"services"</span>]
+  <span class="k">verbs</span>: [<span class="s">"patch"</span>]</code></pre>
+        </div>
+      </div>
+    </article>
+
     <!-- 10. POD INVENTORY -->
     <article class="acc" id="acc-pods">
       <div class="acc-head">
@@ -1231,8 +1350,9 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
           <li><strong>Envoy Gateway over nginx-ingress</strong><span class="why">adopts the standardised Kubernetes Gateway API, which supports advanced traffic policies (rate limiting, JWT validation, external authorisation) natively.</span></li>
           <li><strong>Flux over Argo CD</strong><span class="why">Image Automation is a first-class capability of Flux, removing the need for a separate Argo Image Updater. The operator model is simple and the Kustomization layering supports multi-tenancy without additional tooling.</span></li>
           <li><strong>Multi-repository, not monorepo</strong><span class="why">independent CI/CD, image-level versioning, clear ownership boundaries. Models a real microservices platform.</span></li>
-          <li><strong>ARM64 (Ampere A1) workloads end-to-end</strong><span class="why">matches the worker node architecture, removing QEMU emulation at both build time and runtime.</span></li>
-          <li><strong>No public ingress, no static credentials</strong><span class="why">every external connection enters through the outbound Cloudflare Tunnel; every cloud credential is short-lived and scoped via Instance Principal.</span></li>
+          <li><strong>ARM64 (Ampere A1) workloads end-to-end</strong><span class="why">every image built here targets <code>linux/arm64</code> to match the worker nodes, so nothing runs under emulation in the cluster. The Go backend cross-compiles on the amd64 runner, and the agents platform builds on a native arm64 runner.</span></li>
+          <li><strong>No public ingress, no bootstrap credential</strong><span class="why">every external connection enters through the outbound Cloudflare Tunnel, and no Service is of type LoadBalancer or NodePort. External Secrets reads OCI Vault as the node itself (Instance Principal), so no API key is needed to fetch the others; application credentials are synced from Vault, never committed to Git.</span></li>
+          <li><strong>Storage within the Always Free budget</strong><span class="why">Always Free includes 200&nbsp;GB of block storage in total, boot volumes included, and <code>oci-bv</code> never provisions less than 50&nbsp;GB per volume. So the cluster has exactly one volume: 50&nbsp;GB for Prometheus, with 60-day retention. Loki keeps 30 days on the node's own disk, which survives pod restarts but is lost if the node is replaced. Grafana, Alertmanager and Tempo keep no persistent volume; their configuration comes back from Git and Vault on every start.</span></li>
         </ul>
       </div>
       <div class="panel">
@@ -1241,8 +1361,9 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
           <li><strong><code>distroless/static:nonroot</code> base for Go services</strong><span class="why">final image is small, has no shell, no package manager, no libc, and runs as a non-root user by default. Reduces attack surface and image size simultaneously.</span></li>
           <li><strong><code>nginx-unprivileged</code> for static sites</strong><span class="why">runs as UID 101, passes the restricted Pod Security Standard out of the box.</span></li>
           <li><strong>External Secrets Operator with OCI Vault</strong><span class="why">managed vault with native rotation and IAM audit; no secret material is ever committed to Git.</span></li>
-          <li><strong>Managed Autonomous Database over in-cluster Postgres</strong><span class="why">frees the cluster's block-volume budget for the upcoming observability stack and removes operational burden (backups, upgrades, monitoring).</span></li>
+          <li><strong>Managed Autonomous Database over in-cluster Postgres</strong><span class="why">keeps database storage off the cluster's Always Free block-volume budget, which goes to Prometheus, and leaves patching and operation to Oracle. The agents' memory lives in the same instance, in a schema of its own.</span></li>
           <li><strong>Writer / reader split for the URL shortener</strong><span class="why">aligns with the read-heavy traffic profile and enables independent scaling of the read path.</span></li>
+          <li><strong>Turnstile or an API key on the shortener's write path, failing closed</strong><span class="why"><code>POST /shorten</code> and <code>/createcustom</code> need a Cloudflare Turnstile token, which the widget on the page obtains for a browser and the writer verifies with Cloudflare, or an <code>X-API-Key</code> header for scripts. No proof is a 403 and an unreachable verifier a 503, never a pass, and the writer refuses to start unless at least one of the two secrets is set.</span></li>
           <li><strong>SODA REST instead of a native Oracle DB driver</strong><span class="why">keeps the Go service's container image distroless and CGO-free, with no client library or wallet mount.</span></li>
         </ul>
       </div>
@@ -1487,7 +1608,8 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
       <a href="https://1ms.my/"><span>1ms.my</span><span class="ribbon-sub">link shortener</span></a>
       <a href="https://aboutme.1ms.my/">about me</a>
       <a href="https://infra.1ms.my/">platform</a>
-      <a href="https://secrets.1ms.my/">password-generator</a>
+      <a href="https://secrets.1ms.my/">secrets toolkit</a>
+      <a href="https://myip.1ms.my/">IP checker</a>
       <a href="https://grafana.1ms.my/" target="_blank" rel="noopener"><span>grafana</span><span class="ribbon-ext">↗</span></a>
       <a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener"><span>source</span><span class="ribbon-ext">↗</span></a>
     </div>
@@ -1566,6 +1688,28 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         var top = card.getBoundingClientRect().top + window.pageYOffset - 20;
         window.scrollTo({ top: top, behavior: 'smooth' });
       }
+    });
+  });
+
+  // a hash naming an accordion (the ribbon's #acc-agents and #acc-sre links,
+  // shared links): open that card and scroll it into view below the sticky ribbon
+  function openHashCard(scroll){
+    var id = location.hash.slice(1);
+    var card = id ? document.getElementById(id) : null;
+    if (!card || !card.classList.contains('acc')) return;
+    card.classList.add('open');
+    if (scroll === false) return;
+    var ribbon = document.querySelector('.ribbon');
+    var top = card.getBoundingClientRect().top + window.pageYOffset - (ribbon ? ribbon.offsetHeight : 0) - 12;
+    window.scrollTo({ top: top, behavior: 'smooth' });
+  }
+  openHashCard(false);
+  window.addEventListener('load', openHashCard);
+  window.addEventListener('hashchange', openHashCard);
+  // clicking a link to the hash already in the URL fires no hashchange
+  document.querySelectorAll('a[href^="#acc-"]').forEach(function(a){
+    a.addEventListener('click', function(){
+      if (a.getAttribute('href') === location.hash) setTimeout(openHashCard, 0);
     });
   });
 
