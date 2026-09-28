@@ -158,7 +158,7 @@
       <aside class="spec-card" aria-label="Platform spec">
         <header>
           <span class="title-text">Platform spec</span>
-          <span class="live-mark">live</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--mute)">as of Sep 2026</span>
         </header>
         <dl>
           <dt>cloud</dt><dd>OCI · OKE</dd>
@@ -167,7 +167,7 @@
           <dt>k8s</dt><dd>v1.34.10 · nodes v1.33</dd>
           <dt>flux</dt><dd>v2.6.4 · 6 controllers</dd>
           <dt>nodes</dt><dd>2 × Ampere A1 <b>ARM64</b></dd>
-          <dt>pods</dt><dd>~66</dd>
+          <dt>pods</dt><dd>~64</dd>
           <dt>app ns</dt><dd>7 tenants</dd>
           <dt>repos</dt><dd>9 public</dd>
           <div class="divider"></div>
@@ -180,7 +180,7 @@
           <dt>creds in git</dt><dd><b>0</b></dd>
           <dt>delivery</dt><dd>Git commit → Flux</dd>
           <dt>operator</dt><dd>1 · solo</dd>
-          <dt>lead time</dt><dd>~3.5 min · git → pod</dd>
+          <dt>lead time</dt><dd>~2.5 min · git → pod (median)</dd>
         </dl>
       </aside>
     </div>
@@ -194,16 +194,16 @@
     <div class="kpi">
       <div class="kpi-cell"><div class="kpi-num">9<span class="unit">public repos</span></div><div class="kpi-lbl">8 services + 1 GitOps repo</div></div>
       <div class="kpi-cell"><div class="kpi-num">2<span class="unit">worker nodes</span></div><div class="kpi-lbl">Ampere A1 · ARM64 · 2 pools</div></div>
-      <div class="kpi-cell"><div class="kpi-num">~66<span class="unit">pods</span></div><div class="kpi-lbl">app + platform + monitoring</div></div>
+      <div class="kpi-cell"><div class="kpi-num">~64<span class="unit">pods</span></div><div class="kpi-lbl">app + platform + monitoring</div></div>
       <div class="kpi-cell"><div class="kpi-num">7<span class="unit">app ns</span></div><div class="kpi-lbl">PSS restricted on each</div></div>
       <div class="kpi-cell"><div class="kpi-num">6<span class="unit">controllers</span></div><div class="kpi-lbl">Flux v2.6.4</div></div>
       <div class="kpi-cell"><div class="kpi-num">2<span class="unit">connectors</span></div><div class="kpi-lbl">Cloudflare Tunnel · TLV + MRS</div></div>
-      <div class="kpi-cell"><div class="kpi-num">~3.5<span class="unit">min</span></div><div class="kpi-lbl">git push → running pod</div></div>
-      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">inbound</span></div><div class="kpi-lbl">no LoadBalancer · private worker nodes</div></div>
+      <div class="kpi-cell"><div class="kpi-num">~2.5<span class="unit">min</span></div><div class="kpi-lbl">git push → running pod · median</div></div>
+      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">app inbound</span></div><div class="kpi-lbl">tunnel only · no LoadBalancer · private nodes</div></div>
       <div class="kpi-cell"><div class="kpi-num">0<span class="unit">creds in git</span></div><div class="kpi-lbl">Vault · ESO · Instance Principal</div></div>
       <div class="kpi-cell"><div class="kpi-num">8<span class="unit">HelmReleases</span></div><div class="kpi-lbl">+ 4 Kustomizations, from Git</div></div>
       <div class="kpi-cell"><div class="kpi-num">8<span class="unit">images</span></div><div class="kpi-lbl">under Flux image automation</div></div>
-      <div class="kpi-cell"><div class="kpi-num">123<span class="unit">deploys / 30d</span></div><div class="kpi-lbl">Flux image-automation commits</div></div>
+      <div class="kpi-cell"><div class="kpi-num">~4<span class="unit">deploys / day</span></div><div class="kpi-lbl">Flux image-automation commits, 30 days</div></div>
     </div>
 
     <!-- LIVE STATUS -->
@@ -340,7 +340,7 @@
         <text x="295" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: aboutme</text>
         <rect x="236" y="500" width="118" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
         <text x="295" y="520" font-size="10.5" font-weight="600" fill="currentColor" text-anchor="middle">aboutme-frontend × 2</text>
-        <text x="295" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">About Me + CV</text>
+        <text x="295" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">profile · experience</text>
         <text x="295" y="562" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: pwd</text>
         <rect x="236" y="575" width="118" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
         <text x="295" y="595" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">pwd-frontend × 2</text>
@@ -362,7 +362,7 @@
         <text x="610" y="487" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">ns: monitoring</text>
         <rect x="520" y="500" width="180" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
         <text x="610" y="520" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">grafana × 1</text>
-        <text x="610" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">public viewer · admin login</text>
+        <text x="610" y="535" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">public viewer</text>
         <rect x="520" y="548" width="180" height="42" rx="4" fill="rgba(127,127,127,0.05)" stroke="#9ca3af" stroke-width="1"></rect>
         <text x="610" y="568" font-size="11.5" font-weight="600" fill="currentColor" text-anchor="middle">prometheus · alertmanager</text>
         <text x="610" y="583" font-size="9.5" fill="currentColor" opacity="0.7" text-anchor="middle">metrics · alerting</text>
@@ -470,14 +470,14 @@
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>The cluster has two worker nodes, one in each of two node pools. Both are <code>VM.Standard.A1.Flex</code> Arm virtual machines with 2 OCPU and about 11&nbsp;GB of memory, running Oracle Linux 9 with CRI-O:</p>
+        <p>The cluster has two worker nodes, one in each of two node pools. Both are <code>VM.Standard.A1.Flex</code> Arm virtual machines with 2 OCPU and 12&nbsp;GB of memory (about 10.6&nbsp;GiB visible to Kubernetes), running Oracle Linux 9 with CRI-O:</p>
         <ul>
           <li><strong><code>main-pool</code></strong> — the observability stack: Prometheus, Alertmanager, Loki, Tempo, Grafana, kube-state-metrics and the Prometheus Operator are pinned to it with <code>nodeSelector: name: main-pool</code>.</li>
           <li><strong><code>apps-pool</code></strong> — only <code>pwd-frontend</code> is pinned to it.</li>
         </ul>
         <p>Everything else, from the Flux controllers to the application pods, is scheduled across both nodes. Each node accepts at most 35 pods, and both are close to that limit.</p>
         <p>The four static sites (aboutme, infra, secrets, myip), the URL shortener's writer, reader and frontend, and <code>cloudflared</code> run two replicas each with <code>maxUnavailable: 0</code>, so a rolling update never takes them below two ready pods. Their pod anti-affinity is <em>preferred</em>, not required: the scheduler spreads the replicas across the two nodes when it can, but both can land on one node, and <code>pwd-frontend</code>, pinned to a one-node pool, always has both replicas there.</p>
-        <p>The <strong>restricted</strong> Pod Security Standard is enforced on the seven application namespaces (<code>aboutme</code>, <code>agents</code>, <code>ai-sre-agent</code>, <code>infra</code>, <code>myip</code>, <code>pwd</code>, <code>urlshortener</code>). Every workload there runs as non-root, drops all Linux capabilities, uses the <code>RuntimeDefault</code> seccomp profile and mounts a read-only root filesystem. <code>monitoring</code> is labelled <strong>privileged</strong>, because node-exporter uses the host network, PID namespace and filesystem, and Loki keeps its data on a hostPath. The remaining namespaces, including <code>flux-system</code>, <code>cloudflare</code>, <code>envoy-gateway-system</code>, <code>external-secrets</code> and <code>kube-system</code>, carry no Pod Security label.</p>
+        <p>The <strong>restricted</strong> Pod Security Standard is enforced on the seven application namespaces (<code>aboutme</code>, <code>agents</code>, <code>ai-sre-agent</code>, <code>infra</code>, <code>myip</code>, <code>pwd</code>, <code>urlshortener</code>). Every workload there runs as non-root, drops all Linux capabilities, uses the <code>RuntimeDefault</code> seccomp profile and mounts a read-only root filesystem. <code>monitoring</code> is labelled <strong>privileged</strong>, because node-exporter uses the host network, PID namespace and filesystem, and Loki keeps its data on a hostPath. <code>flux-system</code> only warns against the restricted profile, a label from the Flux install manifest. The remaining namespaces, including <code>cloudflare</code>, <code>envoy-gateway-system</code>, <code>external-secrets</code> and <code>kube-system</code>, carry no Pod Security label.</p>
         <p>Live node CPU, memory and pod counts are on the Cluster Overview dashboard, the home page of <a href="https://grafana.1ms.my/" target="_blank" rel="noopener">grafana.1ms.my</a>.</p>
         <!-- HIDDEN: stale screenshot (k9s node list: three worker nodes on v1.32.1, May 2026). To restore, delete this line
            and the closing line after the figure.
@@ -591,7 +591,7 @@
       <div class="acc-body">
         <ul>
           <li><strong>Registrar</strong> — the <code>1ms.my</code> domain is registered with <strong>Dynadot</strong>. The Dynadot domain has its nameservers delegated to Cloudflare, so Cloudflare hosts the authoritative DNS zone.</li>
-          <li><strong>DNS</strong> — zone <code>1ms.my</code> on Cloudflare. Each hostname the platform serves (apex, <code>aboutme</code>, <code>cv</code>, <code>infra</code>, <code>secrets</code>, <code>myip</code>, <code>grafana</code>) is a proxied CNAME pointing at the homelab tunnel. Cloudflare creates these records automatically when public hostnames are added to the tunnel.</li>
+          <li><strong>DNS</strong> — zone <code>1ms.my</code> on Cloudflare. Each hostname the platform serves (apex, <code>aboutme</code>, <code>cv</code>, <code>infra</code>, <code>secrets</code>, <code>myip</code>, <code>grafana</code>) is a proxied CNAME pointing at the homelab tunnel. The Cloudflare dashboard creates such a record when a public hostname is added there; through the API it is a separate call.</li>
           <li><strong>Proxy (orange-cloud)</strong> — all traffic terminates TLS at Cloudflare's edge. This provides automatic TLS certificates, DDoS protection, edge caching of static assets, and HTTP analytics.</li>
           <li><strong>Cloudflare Tunnel</strong> — <code>cloudflared</code> runs as a 2-replica Deployment inside the cluster and opens outbound, encrypted QUIC connections to Cloudflare's edge. Each replica is one tunnel connector holding four connections, so the tunnel has 2 connectors and 8 connections, spread across Tel Aviv and Marseille edge POPs.</li>
           <li><strong>Tunnel hostnames</strong> route each domain to the in-cluster Envoy data-plane Service over HTTP. No workload accepts connections from the public internet; every request comes in through the tunnel.</li>
@@ -835,7 +835,7 @@
             <text x="395" y="825" font-size="11" fill="currentColor" opacity="0.7">rolling update</text>
             <rect x="220" y="845" width="320" height="65" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
             <text x="380" y="870" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">New pods running</text>
-            <text x="380" y="892" font-size="11.5" fill="currentColor" opacity="0.7" text-anchor="middle">≈ 3 minutes after git push</text>
+            <text x="380" y="892" font-size="11.5" fill="currentColor" opacity="0.7" text-anchor="middle">≈ 2.5 minutes after git push (median)</text>
           </svg>
         </div>
         <p>Why GitHub Actions: it integrates directly with the source repository, provides build caches per repo, and runs at no additional cost on this scale. The OCI Ampere A1 compute pool is fully allocated to the OKE worker nodes, so an in-tenancy CI runner is not an option here.</p>
@@ -1011,7 +1011,7 @@
         <ul>
           <li><code>cloudflared-tunnel-token</code> — the token authorising the Cloudflare Tunnel.</li>
           <li><code>ocir-auth-token</code> — pull credentials for OCIR, materialised as a <code>dockerconfigjson</code> Secret in every application namespace.</li>
-          <li><code>adb-admin-password</code> — Autonomous Database password, consumed by the writer and reader pods as the <code>ADB_PASSWORD</code> environment variable.</li>
+          <li>the Autonomous Database password, consumed by the writer and reader pods as the <code>ADB_PASSWORD</code> environment variable.</li>
         </ul>
         <p>Every application namespace contains an <code>ExternalSecret</code> resource referencing the relevant Vault key. Rotation is performed in Vault and propagates within <code>refreshInterval: 1h</code>. No secret material is committed to Git at any point.</p>
                 <div class="code-block">
@@ -1117,7 +1117,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>LLM agents that do engineering work on this platform, driven from Telegram. They run in the <code>agents</code> namespace as six single-replica Deployments from one repository, <a href="https://github.com/AaronShemtov/ai-agents-platform" target="_blank" rel="noopener">AaronShemtov/ai-agents-platform</a>: five run the same image with different commands, and the GitHub MCP server is GitHub's own image. An agent is configuration rather than code: a profile in <code>agents/*.yaml</code> sets its system prompt, the tools it may call, its model and its step and token limits. CI runs ruff, imports every entrypoint and runs the test suite, then builds the image on a native arm64 runner.</p>
+        <p>LLM agents that do engineering work on this platform, driven from Telegram. They run in the <code>agents</code> namespace as six single-replica Deployments from one repository, <a href="https://github.com/AaronShemtov/ai-agents-platform" target="_blank" rel="noopener">AaronShemtov/ai-agents-platform</a>: five run the same image (the coder and the reviewer share one command and differ only by profile), and the GitHub MCP server is GitHub's own image. An agent is configuration rather than code: a profile in <code>agents/*.yaml</code> sets its system prompt, the tools it may call, its model and its step and token limits. CI runs ruff, imports the lead agent's and both MCP servers' entrypoints, runs the test suite, then builds the image on a native arm64 runner.</p>
         <ul>
           <li><strong>agent-lead</strong> — the only agent with a Telegram bot, and the one a person talks to. It reads the cluster, works in GitHub and Cloudflare, and hands work to the other two. The bot answers allow-listed Telegram users only; an empty list refuses everyone.</li>
           <li><strong>agent-coder</strong> — writes application code, Dockerfiles, workflows and manifests. It has no bot, because Telegram never delivers one bot's messages to another; the lead reaches it over the cluster network as one more MCP tool, <code>coder__ask</code>, checked and logged like any other call.</li>
@@ -1169,12 +1169,12 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <h4 style="margin-top:24px;">Models and memory</h4>
         <ul>
           <li><strong>Azure AI Foundry</strong> — the lead defaults to <code>gpt-5.6-luna</code> and can be switched per chat with <code>/model</code>; the coder runs <code>gpt-5.3-codex</code> and the reviewer <code>gpt-5.1-codex-max</code>. The client sends each deployment to the Responses or the Chat Completions API as configured, and web search runs as an Azure-hosted tool on the Responses API.</li>
-          <li><strong>Optional self-hosted model</strong> — Qwen3.6-35B-A3B on Ollama, on a CPU-only machine outside the cluster, reached through its own Cloudflare Tunnel; requests without a shared secret are refused at the edge. Chosen with <code>/model</code>, it gets a short prompt and no tools.</li>
+          <li><strong>Optional self-hosted model</strong> — Qwen3.6-35B-A3B on Ollama, running outside the cluster. Chosen with <code>/model</code>, it gets a short prompt and no tools.</li>
           <li><strong>Durable memory</strong> — the lead's chat history and the facts it keeps about the user live in the same Autonomous Database as the URL shortener, but in a schema of their own with no grants on the shortener's data. The agent reaches it through ORDS REST-Enabled SQL: plain HTTPS, no Oracle client and no wallet. History is replayed after a restart; <code>/memories</code> lists the stored facts and <code>/forget</code> removes one.</li>
         </ul>
 
         <h4 style="margin-top:24px;">Telemetry and audit</h4>
-        <p>The lead and the coder expose Prometheus metrics under the OpenTelemetry GenAI names (<code>gen_ai_client_token_usage</code>, <code>gen_ai_client_operation_duration_seconds</code>, <code>gen_ai_execute_tool_duration_seconds</code> and the agent-invocation histograms), plus <code>agent_*</code> series for policy decisions, approvals and how long a person took to answer. They feed the <a href="https://grafana.1ms.my/d/ai-agents/ai-agents" target="_blank" rel="noopener">AI Agents</a> dashboard, next to Azure Monitor metrics for the model resource. Every tool call is also one JSON audit line in the pod log, collected into Loki, with the arguments hashed rather than written out.</p>
+        <p>The lead and the coder expose Prometheus metrics under the OpenTelemetry GenAI names (<code>gen_ai_client_token_usage</code>, <code>gen_ai_client_operation_duration_seconds</code>, <code>gen_ai_execute_tool_duration_seconds</code> and the agent-invocation histograms), plus <code>agent_*</code> series for policy decisions, approvals and how long a person took to answer. They feed an AI Agents dashboard in Grafana, next to Azure Monitor metrics for the model resource. Every tool call is also one JSON audit line in the pod log, collected into Loki, with the arguments hashed rather than written out.</p>
       </div>
     </article>
 
@@ -1204,7 +1204,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <ul>
           <li><strong>Two actions</strong> — a rolling restart of a Deployment, and a new selector for a Service whose selector no longer matches its pods' labels. Its ClusterRole grants <code>patch</code> on Deployments and Services and no other write.</li>
           <li><strong>Read access</strong> — <code>get</code>, <code>list</code> and <code>watch</code> on pods, logs, events, workloads, Services, Endpoints, ConfigMaps, nodes, namespaces, Ingresses and HTTPRoutes. No Secrets, no <code>exec</code> or <code>attach</code>, no create or delete, no wildcards.</li>
-          <li><strong>Git still wins</strong> — on objects Flux manages, the lasting fix is a commit: Flux reconciles the applications from Git every 10 minutes and puts back the fields it manages. The lead agent above works the other way round and changes the cluster only through a pull request.</li>
+          <li><strong>Git still wins</strong> — on objects Flux manages, the lasting fix is a commit: Flux re-applies the applications from Git every minute and puts back the fields it manages. The lead agent above works the other way round and changes the cluster only through a pull request.</li>
           <li><strong>Limits</strong> — logs come from the Kubernetes API, not yet from Loki or Prometheus. A pending approval lives in memory and is lost if the pod restarts. It runs as one replica with the Recreate strategy, because a Telegram bot token allows only one poller.</li>
         </ul>
         <div class="code-block">
@@ -1391,20 +1391,20 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
       <div class="panel">
         <h4>Platform &amp; networking</h4>
         <ul>
-          <li><strong>Cloudflare Tunnel instead of an OCI Load Balancer</strong><span class="why">eliminates inbound public IPs entirely. TLS termination, DDoS protection and edge caching are handled by Cloudflare. The cluster has no exposed ports.</span></li>
-          <li><strong>Envoy Gateway over nginx-ingress</strong><span class="why">adopts the standardised Kubernetes Gateway API, which supports advanced traffic policies (rate limiting, JWT validation, external authorisation) natively.</span></li>
+          <li><strong>Cloudflare Tunnel instead of an OCI Load Balancer</strong><span class="why">no load balancer and no public IP on the worker nodes; all site traffic enters through the outbound tunnel. TLS termination, DDoS protection and edge caching are handled by Cloudflare.</span></li>
+          <li><strong>Envoy Gateway over nginx-ingress</strong><span class="why">adopts the standard Kubernetes Gateway API; Envoy Gateway adds rate limiting, JWT validation and external authorisation through its own policy resources when they are needed.</span></li>
           <li><strong>Flux over Argo CD</strong><span class="why">Image Automation is a first-class capability of Flux, removing the need for a separate Argo Image Updater. The operator model is simple and the Kustomization layering supports multi-tenancy without additional tooling.</span></li>
           <li><strong>Multi-repository, not monorepo</strong><span class="why">independent CI/CD, image-level versioning, clear ownership boundaries. Models a real microservices platform.</span></li>
           <li><strong>ARM64 (Ampere A1) workloads end-to-end</strong><span class="why">every image built here targets <code>linux/arm64</code> to match the worker nodes, so nothing runs under emulation in the cluster. The Go backend cross-compiles on the amd64 runner, and the agents platform builds on a native arm64 runner.</span></li>
-          <li><strong>No public ingress, no bootstrap credential</strong><span class="why">every external connection enters through the outbound Cloudflare Tunnel, and no Service is of type LoadBalancer or NodePort. External Secrets reads OCI Vault as the node itself (Instance Principal), so no API key is needed to fetch the others; application credentials are synced from Vault, never committed to Git.</span></li>
-          <li><strong>Storage within the Always Free budget</strong><span class="why">Always Free includes 200&nbsp;GB of block storage in total, boot volumes included, and <code>oci-bv</code> never provisions less than 50&nbsp;GB per volume. So the cluster has exactly one volume: 50&nbsp;GB for Prometheus, with 60-day retention. Loki keeps 30 days on the node's own disk, which survives pod restarts but is lost if the node is replaced. Grafana, Alertmanager and Tempo keep no persistent volume; their configuration comes back from Git and Vault on every start.</span></li>
+          <li><strong>No public site ingress, no key for the vault</strong><span class="why">every request to the sites enters through the outbound Cloudflare Tunnel, and no Service is of type LoadBalancer or NodePort. External Secrets reads OCI Vault as the node itself (Instance Principal), so no API key is needed to fetch the others; application credentials are synced from Vault, never committed to Git.</span></li>
+          <li><strong>Storage within the Always Free budget</strong><span class="why">Always Free includes 200&nbsp;GB of block storage in total, boot volumes included, and <code>oci-bv</code> never provisions less than 50&nbsp;GB per volume. So besides the two node boot volumes the cluster has exactly one persistent volume: 50&nbsp;GB for Prometheus, with 60-day retention. Loki keeps 30 days on the node's own disk, which survives pod restarts but is lost if the node is replaced. Grafana, Alertmanager and Tempo keep no persistent volume; their configuration comes back from Git and Vault on every start.</span></li>
         </ul>
       </div>
       <div class="panel">
         <h4>Images, secrets &amp; data</h4>
         <ul>
           <li><strong><code>distroless/static:nonroot</code> base for Go services</strong><span class="why">final image is small, has no shell, no package manager, no libc, and runs as a non-root user by default. Reduces attack surface and image size simultaneously.</span></li>
-          <li><strong><code>nginx-unprivileged</code> for static sites</strong><span class="why">runs as UID 101, passes the restricted Pod Security Standard out of the box.</span></li>
+          <li><strong><code>nginx-unprivileged</code> for static sites</strong><span class="why">non-root on port 8080 (myip runs stock nginx as UID 101); with the securityContext in each manifest the pods pass the restricted Pod Security Standard.</span></li>
           <li><strong>External Secrets Operator with OCI Vault</strong><span class="why">managed vault with native rotation and IAM audit; no secret material is ever committed to Git.</span></li>
           <li><strong>Managed Autonomous Database over in-cluster Postgres</strong><span class="why">keeps database storage off the cluster's Always Free block-volume budget, which goes to Prometheus, and leaves patching and operation to Oracle. The agents' memory lives in the same instance, in a schema of its own.</span></li>
           <li><strong>Writer / reader split for the URL shortener</strong><span class="why">aligns with the read-heavy traffic profile and enables independent scaling of the read path.</span></li>
@@ -1541,13 +1541,13 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
       <table class="slo-table">
         <thead><tr><th>component</th><th>version</th><th>role</th><th>storage · retention</th></tr></thead>
         <tbody>
-          <tr><td class="svc">Prometheus</td><td>2.55.1</td><td>metrics, 12 scrape jobs</td><td>50&nbsp;GB block volume · 60 days, capped at 30&nbsp;GB</td></tr>
+          <tr><td class="svc">Prometheus</td><td>2.55.1</td><td>metrics from 12 ServiceMonitors and PodMonitors</td><td>50&nbsp;GB block volume · 60 days, capped at 30&nbsp;GB</td></tr>
           <tr><td class="svc">Alertmanager</td><td>0.27.0</td><td>routing for the kube-prometheus-stack default rules</td><td>emptyDir</td></tr>
           <tr><td class="svc">Loki</td><td>3.2.0</td><td>logs, single binary</td><td>node disk · 30 days</td></tr>
           <tr><td class="svc">Alloy</td><td>1.5.0</td><td>DaemonSet: pod logs to Loki, OTLP receiver for traces</td><td>—</td></tr>
           <tr><td class="svc">Tempo</td><td>2.9.0</td><td>traces over OTLP, received through Alloy</td><td>no volume · 24 hours</td></tr>
-          <tr><td class="svc">Grafana</td><td>11.3.9</td><td>dashboards, anonymous Viewer access</td><td>stateless, rebuilt from Git on every start</td></tr>
-          <tr><td class="svc">Exporters</td><td>node-exporter 1.8.2 · kube-state-metrics 2.14.0</td><td>node and object state; Prometheus Operator 0.78.2 manages the CRDs</td><td>—</td></tr>
+          <tr><td class="svc">Grafana</td><td>11.3</td><td>dashboards, anonymous Viewer access</td><td>stateless, rebuilt from Git on every start</td></tr>
+          <tr><td class="svc">Exporters</td><td>node-exporter 1.8.2 · kube-state-metrics 2.14.0</td><td>node and object state; Prometheus Operator 0.78.2 turns ServiceMonitors and PodMonitors into scrape config</td><td>—</td></tr>
         </tbody>
       </table>
     </div>
@@ -1557,7 +1557,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <h4>What is measured</h4>
         <ul>
           <li><strong>Cluster health</strong><span class="why">nodes, pods, restarts, CPU and memory per node and per workload, from node-exporter, kubelet/cAdvisor and kube-state-metrics.</span></li>
-          <li><strong>AI agents</strong><span class="why">token usage, prompt-cache hits, model and tool latency, policy decisions and human approvals. They are scraped from the lead and coder agents' <code>/metrics</code>, under the OpenTelemetry GenAI metric names.</span></li>
+          <li><strong>AI agents</strong><span class="why">token usage, prompt-cache hits and model and tool latency under the OpenTelemetry GenAI metric names, plus policy decisions and human approvals as the platform's own <code>agent_</code> metrics, scraped from the lead and coder agents' <code>/metrics</code>.</span></li>
           <li><strong>Azure OpenAI</strong><span class="why">throttling, tokens per deployment, cached input, latency and content-filter refusals, read from Azure Monitor by a service principal that holds only Monitoring Reader.</span></li>
           <li><strong>Logs from every pod</strong><span class="why">Alloy reads them through the Kubernetes API and labels each stream with namespace, pod, container and node.</span></li>
         </ul>
@@ -1576,7 +1576,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
     <div class="obs-figs">
       <figure>
         <img src="/img/grafana-2026-09-cluster-overview.png" width="1400" height="828" alt="Grafana home dashboard Cluster — Overview for the last 6 hours: 2 nodes Ready, 66 pods Running, 0 pods not ready, 0 restarts in 24 hours, CPU and memory usage per node, pods by namespace and pod restart rate" loading="lazy" />
-        <figcaption>The home dashboard at <code>grafana.1ms.my</code> — Cluster Overview, last 6 hours. Node legends removed, because OKE names nodes by their private IPs.</figcaption>
+        <figcaption>The home dashboard at <code>grafana.1ms.my</code> — Cluster Overview, last 6 hours.</figcaption>
       </figure>
       <figure>
         <img src="/img/grafana-2026-09-compute-resources.png" width="1400" height="1094" alt="Kubernetes / Compute Resources / Cluster dashboard for the last 6 hours: CPU and memory utilisation, requests and limits commitment, CPU and memory usage per namespace, and CPU quota and memory request tables by namespace" loading="lazy" />
@@ -1586,7 +1586,7 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
 
     <div class="proto-banner obs-next">
       <b>next</b>
-      <span>Alertmanager still routes to a no-op receiver, so the default rules fire without paging anyone; Telegram is the next receiver. Tempo is wired end to end, but no service is instrumented yet. The Go URL shortener exposes no <code>/metrics</code>, which request-rate and latency SLOs will need.</span>
+      <span>Route Alertmanager alerts to Telegram; instrument the services for tracing and add a Tempo datasource to Grafana (Tempo already receives OTLP through Alloy); add <code>/metrics</code> to the Go URL shortener, which request-rate and latency SLOs will need.</span>
     </div>
   </section>
 
