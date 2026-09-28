@@ -167,7 +167,7 @@
           <dt>k8s</dt><dd>v1.34.10 · nodes v1.33</dd>
           <dt>flux</dt><dd>v2.6.4 · 6 controllers</dd>
           <dt>nodes</dt><dd>2 × Ampere A1 <b>ARM64</b></dd>
-          <dt>pods</dt><dd>~64</dd>
+          <dt>pods</dt><dd>~63</dd>
           <dt>app ns</dt><dd>7 tenants</dd>
           <dt>repos</dt><dd>9 public</dd>
           <div class="divider"></div>
@@ -194,7 +194,7 @@
     <div class="kpi">
       <div class="kpi-cell"><div class="kpi-num">9<span class="unit">public repos</span></div><div class="kpi-lbl">8 services + 1 GitOps repo</div></div>
       <div class="kpi-cell"><div class="kpi-num">2<span class="unit">worker nodes</span></div><div class="kpi-lbl">Ampere A1 · ARM64 · 2 pools</div></div>
-      <div class="kpi-cell"><div class="kpi-num">~64<span class="unit">pods</span></div><div class="kpi-lbl">app + platform + monitoring</div></div>
+      <div class="kpi-cell"><div class="kpi-num">~63<span class="unit">pods</span></div><div class="kpi-lbl">app + platform + monitoring</div></div>
       <div class="kpi-cell"><div class="kpi-num">7<span class="unit">app ns</span></div><div class="kpi-lbl">PSS restricted on each</div></div>
       <div class="kpi-cell"><div class="kpi-num">6<span class="unit">controllers</span></div><div class="kpi-lbl">Flux v2.6.4</div></div>
       <div class="kpi-cell"><div class="kpi-num">2<span class="unit">connectors</span></div><div class="kpi-lbl">Cloudflare Tunnel · TLV + MRS</div></div>
@@ -798,10 +798,10 @@
             <text x="380" y="45" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Developer</text>
             <line x1="380" y1="65" x2="380" y2="105" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)"></line>
             <text x="395" y="90" font-size="11" fill="currentColor" opacity="0.7">git push</text>
-            <rect x="180" y="110" width="400" height="65" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
-            <text x="380" y="135" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Service repository</text>
-            <text x="380" y="157" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">urlshortener-backend · urlshortener-frontend</text>
-            <text x="380" y="172" font-size="12" fill="currentColor" opacity="0.7" text-anchor="middle">cv-frontend · infra-frontend</text>
+            <rect x="120" y="110" width="520" height="65" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+            <text x="380" y="135" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Service repository · one of eight</text>
+            <text x="380" y="157" font-size="11" fill="currentColor" opacity="0.7" text-anchor="middle">urlshortener-backend · urlshortener-frontend · aboutme-frontend · infra-frontend</text>
+            <text x="380" y="172" font-size="11" fill="currentColor" opacity="0.7" text-anchor="middle">pwd-frontend · myip-frontend · ai-agents-platform · ai-sre-agent</text>
             <line x1="380" y1="175" x2="380" y2="215" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow2)"></line>
             <text x="395" y="200" font-size="11" fill="currentColor" opacity="0.7">workflow trigger</text>
             <rect x="180" y="220" width="400" height="80" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
@@ -839,15 +839,24 @@
           </svg>
         </div>
         <p>Why GitHub Actions: it integrates directly with the source repository, provides build caches per repo, and runs at no additional cost on this scale. The OCI Ampere A1 compute pool is fully allocated to the OKE worker nodes, so an in-tenancy CI runner is not an option here.</p>
-        <p>Builds target <code>linux/arm64</code> only, matching the Ampere A1 worker node architecture. The build itself runs natively on the GitHub-hosted amd64 runner; only the binary is cross-compiled via <code>docker buildx</code>. This avoids QEMU emulation entirely.</p>
-        <p>The four private OCIR repositories holding the images:</p>
+        <p>Builds target <code>linux/arm64</code> only, matching the Ampere A1 worker nodes. Seven of the eight service workflows run on GitHub's hosted amd64 runner and set up QEMU (<code>docker/setup-qemu-action</code>) for <code>docker buildx</code>, so any command in an arm64 build stage runs emulated. The Go backend keeps the compiler out of emulation (<code>FROM --platform=$BUILDPLATFORM</code>, then <code>GOARCH=arm64</code>), and four of the static sites only copy files into an nginx image, so little runs under QEMU there; <code>ai-sre-agent</code> runs its <code>pip install</code> emulated. <code>ai-agents-platform</code> builds on GitHub's native <code>ubuntu-24.04-arm</code> runner and has no QEMU step.</p>
+        <p>Each service pushes one image to a private OCIR repository of the same name, and Flux tracks each image with its own <code>ImageRepository</code> and <code>ImagePolicy</code>. The eight images in use:</p>
+        <ul>
+          <li><code>urlshortener-backend</code>, <code>urlshortener-frontend</code> — the URL shortener at <code>1ms.my</code></li>
+          <li><code>aboutme-frontend</code>, <code>infra-frontend</code>, <code>pwd-frontend</code>, <code>myip-frontend</code> — the static sites</li>
+          <li><code>ai-agents-platform</code> — one image for the three AI agents and two of their MCP servers</li>
+          <li><code>ai-sre-agent</code> — the SRE agent</li>
+        </ul>
+        <!-- HIDDEN: stale screenshot (OCIR console with four repositories, May 2026). To restore, delete this line
+           and the closing line after the figure.
         <figure>
           <img src="/img/ocir.png" alt="OCI Container Registry showing infra-frontend, cv-frontend, urlshortener-frontend, urlshortener-backend repositories with image counts and sizes" loading="lazy" />
           <figcaption>OCI Container Registry — four private repositories, one per service.</figcaption>
         </figure>
+        END HIDDEN: stale screenshot -->
                 <div class="code-block">
           <div class="code-head">
-            <span class="lbl">GitHub Actions workflow — urlshortener-backend/.github/workflows/build-and-push.yml</span>
+            <span class="lbl">GitHub Actions workflow — urlshortener-backend/.github/workflows/build-and-push.yml (abridged)</span>
           </div>
 <pre class="code"><code><span class="k">name</span>: build-and-push
 
@@ -881,7 +890,7 @@
         <span class="k">uses</span>: docker/login-action@v3
         <span class="k">with</span>:
           <span class="k">registry</span>: il-jerusalem-1.ocir.io
-          <span class="k">username</span>: axiwhc5fgu9i/shemtov.aaron@gmail.com
+          <span class="k">username</span>: axiwhc5fgu9i/&lt;oci-username&gt;
           <span class="k">password</span>: ${{ secrets.OCIR_AUTH_TOKEN }}
 
       - <span class="k">name</span>: Resolve image tags
@@ -909,7 +918,15 @@
           echo &quot;&quot; &gt;&gt; $GITHUB_STEP_SUMMARY
           echo &quot;- Version tag (used by Flux): \`${{ steps.tag.outputs.ver }}\`&quot; &gt;&gt; $GITHUB_STEP_SUMMARY
           echo &quot;- SHA tag (traceability):     \`${{ steps.tag.outputs.sha }}\`&quot; &gt;&gt; $GITHUB_STEP_SUMMARY
-          echo &quot;- Convenience tag:            \`latest\`&quot; &gt;&gt; $GITHUB_STEP_SUMMARY</code></pre>
+          echo &quot;- Convenience tag:            \`latest\`&quot; &gt;&gt; $GITHUB_STEP_SUMMARY
+
+      - <span class="k">name</span>: Notify Telegram — success
+        <span class="k">if</span>: success()
+        <span class="c"># curl to the Telegram sendMessage API: image tag, short SHA, actor, link to the run</span>
+
+      - <span class="k">name</span>: Notify Telegram — failure
+        <span class="k">if</span>: failure()
+        <span class="c"># same call: actor and a link to the failed run</span></code></pre>
         </div>
                 <div class="code-block">
           <div class="code-head">
@@ -961,7 +978,12 @@
   <span class="k">policy</span>:
     <span class="k">semver</span>:
       <span class="k">range</span>: <span class="s">&#x27;&gt;=0.0.0&#x27;</span>
+<span class="c"># ... six more ImageRepository + ImagePolicy pairs, one per service:</span>
+<span class="c"># aboutme-frontend, infra-frontend, pwd-frontend, ai-sre-agent,</span>
+<span class="c"># ai-agents-platform, myip-frontend</span>
 <span class="c">---</span>
+<span class="c"># One automation for all eight images: it bumps the tag in any file under</span>
+<span class="c"># ./applications that carries an $imagepolicy marker comment.</span>
 <span class="k">apiVersion</span>: image.toolkit.fluxcd.io/v1beta1
 <span class="k">kind</span>: ImageUpdateAutomation
 <span class="k">metadata</span>:
@@ -981,7 +1003,7 @@
         <span class="k">email</span>: flux@1ms.my
         <span class="k">name</span>: Flux Image Automation
       <span class="k">messageTemplate</span>: |
-        chore(images): bump urlshortener
+        chore(images): bump
 
         {{ range .Updated.Images -}}
         - {{ . }}
@@ -990,8 +1012,16 @@
       <span class="k">branch</span>: main
   <span class="k">update</span>:
     <span class="k">strategy</span>: Setters
-    <span class="k">path</span>: ./applications/urlshortener</code></pre>
+    <span class="k">path</span>: ./applications</code></pre>
         </div>
+
+        <h4 style="margin-top:24px;">Delivery feedback</h4>
+        <p>Both halves of the loop report to Telegram, so a change can be followed from push to rollout without opening GitHub or the cluster.</p>
+        <ul>
+          <li><strong>CI</strong> — the build workflows end with a notification step: <em>Build OK</em> with the image tag, short SHA and a link to the run, or <em>Build FAILED</em> with a link to the logs. Six of the eight post both results; <code>aboutme-frontend</code> posts successes only, and <code>myip-frontend</code> has no notification step yet.</li>
+          <li><strong>Flux</strong> — the notification-controller has one <code>Provider</code> of type <code>telegram</code> and two <code>Alert</code>s. <code>telegram-cluster-events</code> forwards <code>error</code> events from every HelmRelease, Kustomization, ImagePolicy and ImageUpdateAutomation, so a failed reconcile reaches the channel. <code>telegram-image-updates</code> forwards <code>info</code> events from ImageUpdateAutomation only: one message for every image-bump commit Flux pushes.</li>
+          <li><strong>Noise filtering</strong> — successful reconciles are not forwarded, because CI already reports the builds. Both Alerts also carry an <code>exclusionList</code> for the <code>no new tags</code> and <code>no updates made</code> events, which every idle two-minute scan would otherwise post.</li>
+        </ul>
       </div>
     </article>
 
@@ -1006,17 +1036,17 @@
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p><strong>External Secrets Operator (ESO)</strong> reconciles Kubernetes <code>Secret</code> resources from OCI Vault on a schedule. A single <code>ClusterSecretStore</code> named <code>oci-vault</code> is configured with <strong>Instance Principal</strong> authentication — the OKE worker node identity is granted Vault read access via an OCI Dynamic Group and Policy. No static cloud credentials are stored anywhere in the cluster or in Git.</p>
-        <p>Vault secrets currently in use:</p>
+        <p><strong>External Secrets Operator (ESO)</strong> reconciles Kubernetes <code>Secret</code> resources from OCI Vault on a schedule. A single <code>ClusterSecretStore</code> named <code>oci-vault</code> is configured with <strong>Instance Principal</strong> authentication — the OKE worker node identity is granted Vault read access via an OCI Dynamic Group and Policy. The cluster therefore holds no credential for reaching the vault itself. The credentials the workloads use (the OCIR auth token, the database password, API tokens for external services) are long-lived; inside the cluster each one comes from Vault and is materialised as a Kubernetes <code>Secret</code>, except Flux's own Git deploy key, which the Flux bootstrap created. GitHub Actions holds its own copies of what CI needs (the OCIR push token, the Telegram token, the shortener API key for the smoke test) as repository secrets.</p>
+        <p>Vault backs 25 <code>ExternalSecret</code> resources in 10 namespaces, drawn from 18 Vault keys. Three of them:</p>
         <ul>
           <li><code>cloudflared-tunnel-token</code> — the token authorising the Cloudflare Tunnel.</li>
-          <li><code>ocir-auth-token</code> — pull credentials for OCIR, materialised as a <code>dockerconfigjson</code> Secret in every application namespace.</li>
+          <li><code>ocir-auth-token</code> — pull credentials for OCIR, materialised as a <code>dockerconfigjson</code> Secret in every application namespace and in <code>flux-system</code>, where Flux uses it to scan the registry.</li>
           <li>the Autonomous Database password, consumed by the writer and reader pods as the <code>ADB_PASSWORD</code> environment variable.</li>
         </ul>
-        <p>Every application namespace contains an <code>ExternalSecret</code> resource referencing the relevant Vault key. Rotation is performed in Vault and propagates within <code>refreshInterval: 1h</code>. No secret material is committed to Git at any point.</p>
+        <p>The other fifteen keys hold the URL shortener's write-gate secrets, Grafana's admin, signing and data-source credentials, the Alertmanager configuration, Telegram bot tokens, and the AI agents' credentials, such as model-provider, GitHub and Cloudflare tokens and their database password. Every application namespace contains at least one <code>ExternalSecret</code>. Rotation is performed in Vault and reaches the Kubernetes Secret within <code>refreshInterval: 1h</code>. No secret material is committed to Git at any point.</p>
                 <div class="code-block">
           <div class="code-head">
-            <span class="lbl">ClusterSecretStore + ExternalSecret (real manifests)</span>
+            <span class="lbl">ClusterSecretStore + ExternalSecret (real manifests, vault OCID redacted)</span>
           </div>
 <pre class="code"><code><span class="c">---</span>
 <span class="k">apiVersion</span>: external-secrets.io/v1beta1
@@ -1026,7 +1056,7 @@
 <span class="k">spec</span>:
   <span class="k">provider</span>:
     <span class="k">oracle</span>:
-      <span class="k">vault</span>: ocid1.vault.oc1.il-jerusalem-1.hzvbd5tmaaatc.abwxiljrp27qfw44ua4jvugo25a42ydaasbwz4qzmfzkbvym54whglrjk5va
+      <span class="k">vault</span>: ocid1.vault.oc1.il-jerusalem-1.&lt;redacted&gt;
       <span class="k">region</span>: il-jerusalem-1
       <span class="k">principalType</span>: InstancePrincipal
 
@@ -1058,7 +1088,7 @@
         <span class="acc-tag">DATABASE</span>
         <div class="acc-titles">
           <h3>Data layer — Autonomous JSON Database</h3>
-          <div class="acc-meta">Managed document store · SODA REST API over HTTPS</div>
+          <div class="acc-meta">Managed document store · SODA and REST-Enabled SQL over HTTPS</div>
         </div>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
@@ -1071,16 +1101,26 @@
 }</code></pre>
                 <div class="code-block">
           <div class="code-head">
-            <span class="lbl">Live API — writer endpoint and the SODA REST call it makes internally</span>
+            <span class="lbl">Live API — the read path is public, a write needs a proof</span>
           </div>
-<pre class="code"><code>$ curl -X POST https://1ms.my/shorten \
+<pre class="code"><code><span class="c"># read: no credentials</span>
+$ curl -s -o /dev/null -w &#x27;%{http_code} %{redirect_url}\n&#x27; https://1ms.my/smoke-test
+301 https://example.com/healthcheck/smoke
+
+<span class="c"># write without a Turnstile token or an API key: refused by the writer (HTTP 403)</span>
+$ curl -X POST https://1ms.my/shorten \
     -H &quot;Content-Type: application/json&quot; \
     -d &#x27;{&quot;url&quot;:&quot;https://docs.kubernetes.io/some/long/path&quot;}&#x27;
+{&quot;error&quot;:&quot;verification required&quot;}
 
-$ curl -I https://1ms.my/abc123
-HTTP/2 301
-location: https://docs.kubernetes.io/some/long/path</code></pre>
+<span class="c"># write from a script: the API key goes in a header</span>
+$ curl -X POST https://1ms.my/shorten \
+    -H &quot;Content-Type: application/json&quot; \
+    -H &quot;X-API-Key: &lt;api-key&gt;&quot; \
+    -d &#x27;{&quot;url&quot;:&quot;https://docs.kubernetes.io/some/long/path&quot;}&#x27;
+{&quot;short_url&quot;:&quot;https://1ms.my/&lt;6-char code&gt;&quot;}</code></pre>
         </div>
+        <p>The same Autonomous Database also holds the memory of the lead <a href="#acc-agents">AI agent</a> (conversation history and stored facts) in a separate schema. The agent reaches it over HTTPS through ORDS, so the agent image needs no Oracle client or wallet either.</p>
       </div>
     </article>
 
@@ -1097,12 +1137,20 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
       <div class="acc-body">
         <p>The URL shortener is intentionally split into <strong>three independent Deployments</strong> in the <code>urlshortener</code> namespace. The split is a deliberate design decision aligned with the read/write asymmetry of a real shortener service.</p>
         <ul>
-          <li><strong>writer (2 replicas)</strong> — handles <code>POST /shorten</code> and <code>POST /createcustom</code>. Generates the short code, writes the document to the Autonomous Database via SODA REST <code>PUT</code>, and returns the short URL to the caller. Started in <code>MODE=writer</code> via environment variable; the writer image registers only POST handlers.</li>
-          <li><strong>reader (2 replicas)</strong> — handles <code>GET /{6-char-code}</code>. Reads the document from the database and returns a 301 redirect to the long URL. Started in <code>MODE=reader</code>.</li>
-          <li><strong>frontend (2 nginx replicas)</strong> — serves the static single-page application that submits requests to the writer endpoint.</li>
+          <li><strong>writer (2 replicas)</strong> — handles <code>POST /shorten</code> and <code>POST /createcustom</code>. Generates the short code, writes the document to the Autonomous Database via SODA REST <code>PUT</code>, and returns the short URL to the caller. Started in <code>MODE=writer</code> via environment variable; in this mode the process registers only the POST handlers and the health checks. Every write must carry a Turnstile token or an API key (see below).</li>
+          <li><strong>reader (2 replicas)</strong> — handles <code>GET /{code}</code> and <code>HEAD /{code}</code>. Generated codes are 6 characters; custom codes are 4 to 32 characters (lowercase letters, digits, hyphens). Reads the document from the database and returns a 301 redirect to the long URL. Started in <code>MODE=reader</code>.</li>
+          <li><strong>frontend (2 nginx replicas)</strong> — serves the static single-page application, including the Turnstile widget, that submits requests to the writer endpoint.</li>
         </ul>
         <p><strong>Why split writer from reader?</strong> A real URL shortener serves orders of magnitude more reads than writes — a single short link can be shared on social media and receive thousands of redirects per second while the write-side load remains effectively unchanged. By running the read path as a separate Deployment, the reader can scale horizontally (Horizontal Pod Autoscaler on CPU or request-rate) without provisioning additional writer capacity. The writer retains its small, predictable footprint. The two paths can also be deployed, drained, and rolled back independently — useful when migrating the storage backend or rolling out cache changes that affect only the read side.</p>
         <p><strong>Why the multi-Deployment, multi-namespace, multi-repository layout overall?</strong> The platform is structured to model a <strong>microservices architecture</strong>: each user-facing capability is its own Deployment (often its own namespace and source repository), with its own image, its own CI/CD pipeline, its own resource budget, and its own scaling profile. This mirrors how real production platforms are organised.</p>
+
+        <h4 style="margin-top:24px;">Write path protection</h4>
+        <p>Both write endpoints sit behind a gate in the writer. A write is accepted with one of two proofs:</p>
+        <ul>
+          <li><strong>Cloudflare Turnstile token</strong> — the path for browsers. The widget on the 1ms.my form obtains a single-use token, and the writer confirms it with Cloudflare's <code>siteverify</code> API before saving anything.</li>
+          <li><strong>API key</strong> — the path for scripts, sent in the <code>X-API-Key</code> header and compared in constant time. A wrong key is refused on the spot and never falls through to the Turnstile check.</li>
+        </ul>
+        <p>The gate cannot be left open by accident. In writer mode the process refuses to start unless at least one of the two secrets (both reconciled from Vault) is configured. Verification fails closed: if Cloudflare cannot be reached, the write is refused with <code>503</code> instead of being let through, and a missing or rejected proof gets <code>403</code>. Reads need no proof. A scheduled GitHub Actions smoke test in <code>urlshortener-frontend</code> checks the gate against production every day: an anonymous write must be refused by the application itself, a write with the API key must get past the gate, and the short link must redirect for both <code>GET</code> and <code>HEAD</code>.</p>
       </div>
     </article>
 
@@ -1169,7 +1217,6 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <h4 style="margin-top:24px;">Models and memory</h4>
         <ul>
           <li><strong>Azure AI Foundry</strong> — the lead defaults to <code>gpt-5.6-luna</code> and can be switched per chat with <code>/model</code>; the coder runs <code>gpt-5.3-codex</code> and the reviewer <code>gpt-5.1-codex-max</code>. The client sends each deployment to the Responses or the Chat Completions API as configured, and web search runs as an Azure-hosted tool on the Responses API.</li>
-          <li><strong>Optional self-hosted model</strong> — Qwen3.6-35B-A3B on Ollama, running outside the cluster. Chosen with <code>/model</code>, it gets a short prompt and no tools.</li>
           <li><strong>Durable memory</strong> — the lead's chat history and the facts it keeps about the user live in the same Autonomous Database as the URL shortener, but in a schema of their own with no grants on the shortener's data. The agent reaches it through ORDS REST-Enabled SQL: plain HTTPS, no Oracle client and no wallet. History is replayed after a restart; <code>/memories</code> lists the stored facts and <code>/forget</code> removes one.</li>
         </ul>
 
@@ -1229,18 +1276,21 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <span class="acc-tag">PODS</span>
         <div class="acc-titles">
           <h3>Cluster pod inventory</h3>
-          <div class="acc-meta">Live view from k9s · ~63 pods total</div>
+          <div class="acc-meta">63 platform pods · 13 namespaces · September 2026</div>
         </div>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>The cluster currently runs around 63 pods distributed across the namespaces below. The pod count includes platform components (Flux controllers, Envoy Gateway, External Secrets Operator, Cloudflare Tunnel), node-local DaemonSets (CNI, CSI, kube-proxy, OKE node observability agents), and application workloads.</p>
+        <p>The platform runs 63 pods across the 13 namespaces below (September 2026). The count includes platform components (Flux controllers, Envoy Gateway, External Secrets Operator, Cloudflare Tunnel, the monitoring stack), node-local DaemonSets (CNI, CSI, kube-proxy, OKE node agents, node-exporter, Alloy), and application workloads.</p>
         <p>Application namespaces:</p>
         <ul>
           <li><code>urlshortener</code> — writer × 2, reader × 2, frontend × 2 (6 pods)</li>
-          <li><code>cv</code> — cv-frontend × 2</li>
+          <li><code>aboutme</code> — aboutme-frontend × 2</li>
           <li><code>infra</code> — infra-frontend × 2</li>
           <li><code>pwd</code> — pwd-frontend × 2</li>
+          <li><code>myip</code> — myip-frontend × 2</li>
+          <li><code>agents</code> — agent-lead, agent-coder, agent-reviewer and three MCP servers (GitHub, Cloudflare, cluster) — 6 pods; see <a href="#acc-agents">AI agents</a></li>
+          <li><code>ai-sre-agent</code> — ai-sre-agent × 1; see <a href="#acc-sre">SRE agent</a></li>
         </ul>
         <p>Platform namespaces:</p>
         <ul>
@@ -1248,17 +1298,23 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
           <li><code>envoy-gateway-system</code> — Envoy control plane and data plane</li>
           <li><code>external-secrets</code> — ESO controller, webhook, cert-controller</li>
           <li><code>cloudflare</code> — cloudflared × 2</li>
-          <li><code>monitoring</code> — Prometheus, Alertmanager, Loki (+ canaries), Grafana, kube-state-metrics, Prometheus Operator, Alloy × 3 (DaemonSet), node-exporter × 3 (DaemonSet) — ~15 pods total</li>
-          <li><code>kube-system</code> — CoreDNS, OCI CSI, OCI VCN CNI, kube-proxy, metrics-server, OKE node observability and problem-detection agents</li>
+          <li><code>monitoring</code> — Prometheus, Alertmanager, Loki (+ 2 canaries), Tempo, Grafana, kube-state-metrics, Prometheus Operator, Alloy × 2 and node-exporter × 2 (DaemonSets) — 13 pods; see <a href="#observability">§04 · Observability stack</a></li>
+          <li><code>kube-system</code> — CoreDNS × 2, OCI CSI, OCI VCN-native CNI, kube-proxy, metrics-server, kube-dns-autoscaler, OKE node observability, problem-detection and proxymux agents — 16 pods</li>
         </ul>
+        <!-- HIDDEN: stale screenshot (k9s pod list with the cv namespace, part 1, May 2026). To restore, delete this line
+           and the closing line after the figure.
         <figure>
           <img src="/img/pods-1.png" alt="k9s screenshot of cluster pods — flux-system, cv, envoy-gateway-system, external-secrets, infra namespaces" loading="lazy" />
           <figcaption>Cluster pods — Flux, Envoy Gateway, External Secrets, application namespaces (part 1).</figcaption>
         </figure>
+        END HIDDEN: stale screenshot -->
+        <!-- HIDDEN: stale screenshot (k9s pod list of kube-system and urlshortener, part 2, May 2026). To restore, delete this line
+           and the closing line after the figure.
         <figure>
           <img src="/img/pods-2.png" alt="k9s screenshot of cluster pods — kube-system, urlshortener namespace, OKE node agents" loading="lazy" />
           <figcaption>Cluster pods — kube-system (CoreDNS, CSI, CNI, kube-proxy, OKE agents) and the urlshortener workloads (part 2).</figcaption>
         </figure>
+        END HIDDEN: stale screenshot -->
       </div>
     </article>
 
@@ -1360,18 +1416,21 @@ location: https://docs.kubernetes.io/some/long/path</code></pre>
         <span class="acc-tag">REPOS</span>
         <div class="acc-titles">
           <h3>Repositories — multi-repository strategy</h3>
-          <div class="acc-meta">Six public repositories · one per concern · modeled on microservices</div>
+          <div class="acc-meta">Nine public repositories · one per concern · modeled on microservices</div>
         </div>
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>The platform is intentionally split across <strong>six public repositories</strong> rather than a single monorepo. Each repository owns one concern: it has its own CI/CD workflow, its own container image, and is rolled out independently by Flux Image Automation. This structure deliberately models a real microservices platform, where each service team owns a repository and the platform team owns the GitOps cluster repository.</p>
+        <p>The platform is intentionally split across <strong>nine public repositories</strong> rather than a single monorepo. Each of the eight service repositories owns one concern: it has its own CI/CD workflow and its own container image, and is rolled out independently by Flux Image Automation. The ninth, <code>personal-k8s</code>, is the cluster repository. This structure deliberately models a real microservices platform, where each service team owns a repository and the platform team owns the GitOps cluster repository.</p>
         <ul>
-          <li><strong><a href="https://github.com/AaronShemtov/urlshortener-backend" target="_blank" rel="noopener">AaronShemtov/urlshortener-backend</a></strong> — Go service running in writer or reader mode, selected by environment variable. SODA REST client, distroless image.</li>
-          <li><strong><a href="https://github.com/AaronShemtov/urlshortener-frontend" target="_blank" rel="noopener">AaronShemtov/urlshortener-frontend</a></strong> — static HTML, CSS and JavaScript form, served by nginx-unprivileged.</li>
-          <li><strong><a href="https://github.com/AaronShemtov/cv-frontend" target="_blank" rel="noopener">AaronShemtov/cv-frontend</a></strong> — the CV site at aboutme.1ms.my.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/urlshortener-backend" target="_blank" rel="noopener">AaronShemtov/urlshortener-backend</a></strong> — Go service running in writer or reader mode, selected by environment variable. SODA REST client, Turnstile / API-key write gate, distroless image.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/urlshortener-frontend" target="_blank" rel="noopener">AaronShemtov/urlshortener-frontend</a></strong> — static HTML, CSS and JavaScript form with the Turnstile widget, served by nginx-unprivileged; also holds the daily smoke test of the write path.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/aboutme-frontend" target="_blank" rel="noopener">AaronShemtov/aboutme-frontend</a></strong> — the About Me site at aboutme.1ms.my (formerly <code>cv-frontend</code>).</li>
           <li><strong><a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener">AaronShemtov/infra-frontend</a></strong> — this page.</li>
-          <li><strong><a href="https://github.com/AaronShemtov/pwd-frontend" target="_blank" rel="noopener">AaronShemtov/pwd-frontend</a></strong> — the password generator at secrets.1ms.my; client-side cryptographic generation, no backend.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/pwd-frontend" target="_blank" rel="noopener">AaronShemtov/pwd-frontend</a></strong> — the secrets toolkit at secrets.1ms.my: passwords, tokens, basic-auth lines, Kubernetes Secrets and hashes, all computed in the browser; no backend.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/myip-frontend" target="_blank" rel="noopener">AaronShemtov/myip-frontend</a></strong> — the public IP and approximate geolocation checker at myip.1ms.my.</li>
+          <li><strong><a href="https://github.com/AaronShemtov/ai-agents-platform" target="_blank" rel="noopener">AaronShemtov/ai-agents-platform</a></strong> — Telegram-driven AI agents with MCP servers for GitHub, Cloudflare and the cluster; one image for the agents and two of the servers (see <a href="#acc-agents">AI agents</a>).</li>
+          <li><strong><a href="https://github.com/AaronShemtov/ai-sre-agent" target="_blank" rel="noopener">AaronShemtov/ai-sre-agent</a></strong> — a LangGraph incident-investigation agent: asked in Telegram, it gathers pods, events and logs from the cluster and replies with a root-cause analysis (see <a href="#acc-sre">SRE agent</a>).</li>
           <li><strong><a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener">AaronShemtov/personal-k8s</a></strong> — the GitOps source of truth. Contains every Flux Kustomization, HelmRelease and Kubernetes manifest reconciled against the cluster.</li>
         </ul>
       </div>
