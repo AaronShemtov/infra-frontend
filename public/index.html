@@ -85,6 +85,24 @@
   .obs-figs figure { margin: 0 0 18px; }
   .obs-figs figure img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; display: block; }
   .obs-figs figcaption { font-family: var(--mono); font-size: 11.5px; color: var(--mute); margin-top: 8px; letter-spacing: 0.01em; }
+  /* Recent deploys, read from the public Telegram channel through /deploys
+     (see nginx.conf). Same card as the live status bar above it. */
+  .deploy-feed { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px 22px 10px; margin: 14px 0 0; }
+  .deploy-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute); margin-bottom: 6px; }
+  .deploy-head a { text-transform: none; letter-spacing: 0; }
+  .deploy-list { list-style: none; margin: 0; padding: 0; font-family: var(--mono); font-size: 12.5px; }
+  .deploy-list li + li { border-top: 1px dashed var(--line-2); }
+  .deploy-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: baseline;
+    padding: 7px 0; color: var(--ink-2); text-decoration: none; }
+  .deploy-row:hover { color: var(--accent); text-decoration: none; }
+  .deploy-kind { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .deploy-kind.build { color: var(--live); }
+  .deploy-kind.rollout { color: var(--accent); }
+  .deploy-kind.error { color: var(--danger); }
+  .deploy-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .deploy-when { color: var(--mute); font-size: 11px; white-space: nowrap; }
+  .deploy-empty { color: var(--mute); padding: 7px 0; }
 </style>
 </head>
 <body>
@@ -153,6 +171,7 @@
           <li><a href="https://secrets.1ms.my/"><span class="dot-i"></span><span><span class="name">secrets.1ms.my</span> <span class="desc">— client-side secrets toolkit: passwords, tokens, htpasswd, k8s Secrets</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li><a href="https://myip.1ms.my/"><span class="dot-i"></span><span><span class="name">myip.1ms.my</span> <span class="desc">— public IPv4 / IPv6 and approximate location checker</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li><a href="https://grafana.1ms.my/"><span class="dot-i"></span><span><span class="name">grafana.1ms.my</span> <span class="desc">— public read-only observability dashboards</span></span><span style="color:var(--mute)">↗</span></a></li>
+          <li><a href="https://t.me/onemsplatform"><span class="dot-i"></span><span><span class="name">t.me/onemsplatform</span> <span class="desc">— build and rollout notifications, as they happen</span></span><span style="color:var(--mute)">↗</span></a></li>
           <li class="ext"><a href="https://github.com/AaronShemtov"><span class="gh-mark">⌘</span><span><span class="name">github.com/AaronShemtov</span> <span class="desc">— all source repositories</span></span><span style="color:var(--mute)">↗</span></a></li>
         </ul>
       </div>
@@ -255,6 +274,10 @@
     </div>
     <div class="live-disclaimer">
       ▸ live status: on page load your browser requests each site's <code>/healthz</code> endpoint. CORS keeps the response body unreadable to this page, so the dot turns green if the request completes without a network error, red otherwise.
+    </div>
+    <div class="deploy-feed">
+      <div class="deploy-head"><span>recent deploys · from Telegram</span><a href="https://t.me/onemsplatform" target="_blank" rel="noopener">t.me/onemsplatform ↗</a></div>
+      <ol class="deploy-list" id="deploy-list" aria-live="polite"><li class="deploy-empty">loading…</li></ol>
     </div>
   </section>
 
@@ -1018,7 +1041,7 @@
         </div>
 
         <h4 style="margin-top:24px;">Delivery feedback</h4>
-        <p>Both halves of the loop report to Telegram, so a change can be followed from push to rollout without opening GitHub or the cluster.</p>
+        <p>Both halves of the loop report to the public Telegram channel <a href="https://t.me/onemsplatform" target="_blank" rel="noopener">t.me/onemsplatform</a>, and the latest events are shown at the top of this page, so a change can be followed from push to rollout without opening GitHub or the cluster.</p>
         <ul>
           <li><strong>CI</strong> — the build workflows end with a notification step: <em>Build OK</em> with the image tag, short SHA and a link to the run, or <em>Build FAILED</em> with a link to the logs. Six of the eight post both results; <code>aboutme-frontend</code> posts successes only, and <code>myip-frontend</code> has no notification step yet.</li>
           <li><strong>Flux</strong> — the notification-controller has one <code>Provider</code> of type <code>telegram</code> and two <code>Alert</code>s. <code>telegram-cluster-events</code> forwards <code>error</code> events from every HelmRelease, Kustomization, ImagePolicy and ImageUpdateAutomation, so a failed reconcile reaches the channel. <code>telegram-image-updates</code> forwards <code>info</code> events from ImageUpdateAutomation only: one message for every image-bump commit Flux pushes.</li>
@@ -1722,6 +1745,7 @@ $ curl -X POST https://1ms.my/shorten \
       <a href="https://secrets.1ms.my/">secrets toolkit</a>
       <a href="https://myip.1ms.my/">IP checker</a>
       <a href="https://grafana.1ms.my/" target="_blank" rel="noopener"><span>grafana</span><span class="ribbon-ext">↗</span></a>
+      <a href="https://t.me/onemsplatform" target="_blank" rel="noopener"><span>telegram</span><span class="ribbon-ext">↗</span></a>
       <a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener"><span>source</span><span class="ribbon-ext">↗</span></a>
     </div>
   </footer>
@@ -1823,6 +1847,80 @@ $ curl -X POST https://1ms.my/shorten \
       if (a.getAttribute('href') === location.hash) setTimeout(openHashCard, 0);
     });
   });
+
+  // recent deploys — the public preview of t.me/onemsplatform, proxied
+  // same-origin by nginx at /deploys and cached there for a minute. Only
+  // textContent is used, so no markup from the channel reaches this page.
+  (function () {
+    var list = document.getElementById('deploy-list');
+    var CHANNEL = 'https://t.me/onemsplatform';
+    if (!list || !window.DOMParser || !window.fetch) return;
+    function row(kind, label, when, href) {
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.className = 'deploy-row';
+      a.href = href; a.target = '_blank'; a.rel = 'noopener';
+      [['deploy-kind ' + kind, kind], ['deploy-label', label], ['deploy-when', when]].forEach(function (c) {
+        var span = document.createElement('span');
+        span.className = c[0]; span.textContent = c[1];
+        a.appendChild(span);
+      });
+      a.children[1].title = label;  // the full label, when it is cut off
+      li.appendChild(a);
+      return li;
+    }
+    function unavailable() {
+      list.textContent = '';
+      var li = document.createElement('li');
+      li.className = 'deploy-empty';
+      li.textContent = 'the feed is unavailable right now; the channel has every event';
+      list.appendChild(li);
+    }
+    function ago(iso) {
+      var s = (Date.now() - Date.parse(iso)) / 1000;
+      if (!(s >= 0)) return '';
+      if (s < 90) return 'just now';
+      if (s < 5400) return Math.round(s / 60) + ' min ago';
+      if (s < 129600) return Math.round(s / 3600) + ' h ago';
+      return Math.round(s / 86400) + ' d ago';
+    }
+    function describe(text) {
+      // "…/axiwhc5fgu9i/infra-frontend:0.0.41" -> "infra-frontend 0.0.41"
+      var tags = (text.match(/[a-z0-9-]+:\d+\.\d+\.\d+/g) || [])
+        .map(function (t) { return t.replace(':', ' '); })
+        .filter(function (t, i, all) { return all.indexOf(t) === i; });
+      var sha = (text.match(/SHA\s*:\s*([0-9a-f]{7,})/i) || [])[1];
+      if (/build ok/i.test(text)) return ['build', (tags[0] || 'build') + (sha ? ' · ' + sha : '')];
+      if (/build failed/i.test(text)) return ['error', 'build failed' + (tags[0] ? ' · ' + tags[0] : '')];
+      if (/pushed commit/i.test(text)) return ['rollout', tags.length ? tags.join(', ') : 'image bump'];
+      return ['error', text.split('\n')[0].slice(0, 120)];
+    }
+    fetch('/deploys')
+      .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var posts = Array.prototype.slice.call(doc.querySelectorAll('.tgme_widget_message[data-post]')).reverse();
+        var shown = 0;
+        list.textContent = '';
+        posts.forEach(function (p) {
+          if (shown >= 8) return;
+          var body = p.querySelector('.tgme_widget_message_text');
+          if (!body) return;
+          body.querySelectorAll('br').forEach(function (br) { br.replaceWith('\n'); });
+          var text = (body.textContent || '').replace(/[ \t]+/g, ' ').trim();
+          if (!text) return;
+          var time = p.querySelector('time[datetime]');
+          var link = p.querySelector('a.tgme_widget_message_date');
+          var href = link && link.getAttribute('href');
+          if (!href || href.indexOf(CHANNEL + '/') !== 0) href = CHANNEL;
+          var d = describe(text);
+          list.appendChild(row(d[0], d[1], time ? ago(time.getAttribute('datetime')) : '', href));
+          shown++;
+        });
+        if (!shown) unavailable();
+      })
+      .catch(unavailable);
+  })();
 
   // live status — best-effort fetch (CORS may block body read; we use no-cors)
   document.querySelectorAll('.live-svc').forEach(function(svc){
