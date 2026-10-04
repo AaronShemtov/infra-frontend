@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Agentic AI Architecture — infra.1ms.my</title>
+<meta name="description" content="Three LLM agents that do engineering work on the 1ms.my platform, driven from Telegram: a lead, a coder and a reviewer, MCP servers for GitHub, the cluster and Cloudflare, one credential per pod, local policy and human approval." />
+<script>
+  // theme toggle (early to avoid flash)
+  (function(){ try { var t = localStorage.getItem('theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/blueprint.css" />
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<style>
+  /* Ribbon and footer extensions, the same as on the main infra.1ms.my page. */
+  .ribbon-nav a > span:first-child { display: block; line-height: 1.1; }
+  .ribbon-sub { display: block; font-family: var(--mono); font-size: 9.5px; color: var(--mute); letter-spacing: 0.04em; text-transform: lowercase; margin-top: 1px; }
+  .ribbon-ext { margin-left: 4px; color: var(--mute); font-size: 11px; vertical-align: baseline; }
+  .ribbon-nav a:hover .ribbon-ext, .ribbon-nav a:hover .ribbon-sub { color: var(--accent); }
+  .foot-nav { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+  .foot-nav a { display: inline-block; font-family: var(--mono); font-size: 12px; color: var(--mute); text-decoration: none; transition: color 0.12s ease; }
+  .foot-nav a:hover { color: var(--accent); }
+  .foot-nav a:hover .ribbon-ext, .foot-nav a:hover .ribbon-sub { color: var(--accent); }
+  .foot-nav a > span:first-child { line-height: 1.1; }
+
+  /* Anchors land below the sticky ribbon; its height is measured by the script,
+     because on a phone the menu wraps onto several lines. */
+  section.block, .acc { scroll-margin-top: calc(var(--ribbon-h, 64px) + 12px); }
+
+  /* Page navigation under the quick facts. */
+  .page-nav { margin: 0; }
+
+  /* Tables: scroll sideways on narrow screens instead of widening the page.
+     Text cells use the sans face; the first column stays monospace. */
+  .table-scroll { overflow-x: auto; margin: 0 0 22px; }
+  .table-scroll .slo-table { min-width: 680px; }
+  .slo-table.wide td { font-family: var(--sans); font-size: 13.5px; line-height: 1.45; vertical-align: top; color: var(--ink-2); }
+  .slo-table.wide td.svc, .slo-table.wide td.mono { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  .slo-table code { font-size: 0.9em; background: var(--paper-2); padding: 1px 5px; border-radius: 3px; color: var(--ink); }
+  .dec { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  .dec.run { color: var(--live); }
+  .dec.ask { color: var(--warn); }
+  .dec.deny { color: var(--danger); }
+
+  /* Blocks inside a section keep the page's spacing. */
+  .block .cols-2 { margin: 0 0 22px; }
+  .panel li code { font-size: 0.86em; }
+  .sub-h { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute); font-weight: 500; margin: 30px 0 12px; }
+  .acc-body h4 { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute); font-weight: 500; margin: 22px 0 10px; }
+
+  /* A numbered strip of steps: the path of one tool call. */
+  .flow { list-style: none; counter-reset: step; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    margin: 0 0 22px; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); overflow: hidden; }
+  .flow li { padding: 14px 16px; border-right: 1px dashed var(--line-2); font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+  .flow li:last-child { border-right: 0; }
+  .flow b { display: block; font-family: var(--mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 5px; }
+  .flow b::before { counter-increment: step; content: counter(step, decimal-leading-zero) " · "; color: var(--mute); font-weight: 400; }
+  @media (max-width: 820px) {
+    .flow { grid-template-columns: 1fr; }
+    .flow li { border-right: 0; border-bottom: 1px dashed var(--line-2); }
+    .flow li:last-child { border-bottom: 0; }
+  }
+
+  /* A numbered list of what happens in one turn. */
+  .steps { list-style: none; counter-reset: turn; margin: 0 0 22px; padding: 18px 24px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+  .steps li { position: relative; padding: 8px 0 8px 44px; border-top: 1px dashed var(--line-2); font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+  .steps li:first-child { border-top: 0; }
+  .steps li::before { counter-increment: turn; content: counter(turn, decimal-leading-zero); position: absolute; left: 0; top: 8px; font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .steps strong { color: var(--ink); font-weight: 600; }
+
+  /* The diagram keeps a readable size on a phone and scrolls sideways inside its frame;
+     the script centres it, so the lead is in view first. */
+  .diagram .click-mark { fill: currentColor; opacity: 0.55; }
+  .diagram-swipe { display: none; }
+  @media (max-width: 700px) {
+    .diagram-wrap { overflow-x: auto; padding: 14px; }
+    .diagram { min-width: 660px; }
+    .diagram-swipe { display: block; font-family: var(--mono); font-size: 11px; color: var(--mute); margin: 8px 0 0; text-align: center; }
+  }
+
+  /* On a phone the text tables stack: one block per row, each cell under its column
+     name. The script copies the names into data-label; without it they scroll sideways. */
+  @media (max-width: 700px) {
+    .table-scroll .slo-table.wide.stack { min-width: 0; }
+    .slo-table.wide.stack, .slo-table.wide.stack tbody { display: block; }
+    .slo-table.wide.stack thead { display: none; }
+    .slo-table.wide.stack tr { display: block; padding: 12px 16px; border-bottom: 1px solid var(--line-2); }
+    .slo-table.wide.stack tr:last-child { border-bottom: 0; }
+    .slo-table.wide.stack td { display: block; padding: 3px 0; border: 0; }
+    .slo-table.wide.stack td.svc, .slo-table.wide.stack td:first-child { font-weight: 600; padding-bottom: 6px; }
+    .slo-table.wide.stack td[data-label]:not(:first-child)::before { content: attr(data-label); display: block;
+      font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute); }
+  }
+
+  /* Figures outside accordions get the look blueprint.css gives them inside one. */
+  .fig { margin: 0 0 22px; }
+  .fig img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; display: block; }
+  .fig figcaption { font-family: var(--mono); font-size: 11.5px; color: var(--mute); margin-top: 8px; letter-spacing: 0.01em; }
+
+  .code-block { margin: 0 0 22px; }
+  .acc-body .code-block { margin: 18px 0; }
+  .lede code { font-size: 0.82em; }
+</style>
+</head>
+<body>
+
+<div class="ribbon">
+  <div class="ribbon-inner">
+    <div class="ribbon-left">
+      <a class="brand" href="https://aboutme.1ms.my/">Aaron Shemtov</a>
+    </div>
+    <div style="display:flex; align-items:center; gap:18px;">
+      <nav class="ribbon-nav">
+        <a href="https://aboutme.1ms.my/">about<br>me</a>
+        <a href="https://1ms.my/">link<br>shortener</a>
+        <a href="https://infra.1ms.my/">Kubernetes platform<br>architecture</a>
+        <a href="https://infra.1ms.my/agents/" class="current" aria-current="page">Agentic AI<br>architecture</a>
+        <a href="https://infra.1ms.my/#acc-sre">AI SRE<br>agent</a>
+        <a href="https://secrets.1ms.my/">secrets<br>toolkit</a>
+        <a href="https://myip.1ms.my/">IP<br>checker</a>
+      </nav>
+      <button class="theme-btn" id="theme-btn" aria-label="Toggle theme" title="Toggle theme">
+        <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="crumbs">
+      <span>~/aaronshemtov</span><span class="sep">/</span><span>platform</span><span class="sep">/</span><span>agents</span>
+    </div>
+
+    <div class="hero-grid">
+      <div class="title-block">
+        <h1 class="title"><span class="lt">/</span>Agentic AI<br/>Architecture</h1>
+        <div class="title-tag">kubectl get deploy -n agents — 3 agents · 3 mcp servers<span class="blink"></span></div>
+
+        <p class="lede">
+          Three LLM agents that do engineering work on this platform, driven from Telegram: <strong>a lead that I talk to, a coder it delegates to, and a reviewer on a different model that cannot write</strong>. They reach GitHub, the cluster and Cloudflare only through MCP servers, every tool call they send passes a local policy, and the risky ones wait for me to press a button.
+        </p>
+
+        <div class="tag-row">
+          <span class="tag-pill">mcp</span>
+          <span class="tag-pill">multi-agent</span>
+          <span class="tag-pill">human in the loop</span>
+          <span class="tag-pill">least privilege</span>
+          <span class="tag-pill">opentelemetry genai</span>
+          <span class="tag-pill">gitops</span>
+        </div>
+
+        <p class="lede" style="margin-top:18px;">
+          The agents run in the <code>agents</code> namespace of the <a href="https://infra.1ms.my/">Kubernetes platform</a> and are delivered like every site on it: a Git commit, an arm64 image built in CI, a Flux rollout. An agent is configuration rather than code, and the hard limits (RBAC, the GitHub toolsets, the token's scope) live in Kubernetes objects and server flags kept in Git, outside the model's reach.
+        </p>
+
+        <div class="hero-links">
+          <a href="https://github.com/AaronShemtov/ai-agents-platform" target="_blank" rel="noopener">source · ai-agents-platform</a>
+          <a href="https://infra.1ms.my/">the platform · infra.1ms.my</a>
+        </div>
+      </div>
+
+      <aside class="spec-card" aria-label="Agents spec">
+        <header>
+          <span class="title-text">Agents spec</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--mute)">as of Oct 2026</span>
+        </header>
+        <dl>
+          <dt>namespace</dt><dd>agents · PSS restricted</dd>
+          <dt>workloads</dt><dd>6 Deployments × 1 replica</dd>
+          <dt>images</dt><dd>1 own + GitHub's MCP</dd>
+          <dt>runtime</dt><dd>Python 3.12 · MCP SDK 2.x</dd>
+          <dt>transport</dt><dd>MCP · Streamable HTTP</dd>
+          <dt>interface</dt><dd>Telegram · allow-list</dd>
+          <div class="divider"></div>
+          <dt>lead</dt><dd>gpt-5.6-luna · /model</dd>
+          <dt>coder</dt><dd>gpt-5.3-codex</dd>
+          <dt>reviewer</dt><dd>gpt-5.1-codex-max</dd>
+          <dt>models</dt><dd>Azure AI Foundry</dd>
+          <dt>memory</dt><dd>Autonomous DB · ORDS</dd>
+          <div class="divider"></div>
+          <dt>k8s rights</dt><dd><b>1 pod</b> · read only</dd>
+          <dt>k8s writes</dt><dd><b>0</b> · via pull requests</dd>
+          <dt>approval</dt><dd>Telegram button · 10 min</dd>
+          <dt>telemetry</dt><dd>OTel GenAI · Grafana</dd>
+          <dt>delivery</dt><dd>Git commit → Flux</dd>
+        </dl>
+      </aside>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-heading">
+      <span class="kpi-rule"></span>
+      <span class="kpi-title">Quick facts</span>
+      <span class="kpi-rule"></span>
+    </div>
+    <div class="kpi">
+      <div class="kpi-cell"><div class="kpi-num">3<span class="unit">agents</span></div><div class="kpi-lbl">lead · coder · reviewer</div></div>
+      <div class="kpi-cell"><div class="kpi-num">3<span class="unit">MCP servers</span></div><div class="kpi-lbl">GitHub · cluster · Cloudflare</div></div>
+      <div class="kpi-cell"><div class="kpi-num">1<span class="unit">image</span></div><div class="kpi-lbl">runs 5 of the 6 Deployments</div></div>
+      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">k8s write verbs</span></div><div class="kpi-lbl">read-only ClusterRole</div></div>
+      <div class="kpi-cell"><div class="kpi-num">14<span class="unit">Cloudflare tools</span></div><div class="kpi-lbl">5 read · 9 write · lead asks first</div></div>
+      <div class="kpi-cell"><div class="kpi-num">10<span class="unit">min</span></div><div class="kpi-lbl">to approve · silence = no</div></div>
+      <div class="kpi-cell"><div class="kpi-num">0<span class="unit">PVCs</span></div><div class="kpi-lbl">memory in Autonomous DB</div></div>
+      <div class="kpi-cell"><div class="kpi-num">29<span class="unit">test files</span></div><div class="kpi-lbl">pytest before every build</div></div>
+    </div>
+
+    <div class="walk-controls page-nav">
+      <nav class="in-page-nav" aria-label="page sections">
+        <a href="#overview">overview</a>
+        <a href="#agents">agents</a>
+        <a href="#boundaries">credentials</a>
+        <a href="#policy">policy</a>
+        <a href="#turn">one turn</a>
+        <a href="#mcp">mcp servers</a>
+        <a href="#models">models</a>
+        <a href="#memory">memory</a>
+        <a href="#observability">metrics</a>
+        <a href="#delivery">delivery</a>
+        <a href="#decisions">decisions</a>
+      </nav>
+      <button class="bulk-toggle" id="bulk-toggle" type="button">Expand all</button>
+    </div>
+  </section>
+
+  <!-- 01 OVERVIEW -->
+  <section class="block" id="overview">
+    <div class="sec-head">
+      <span class="sec-num">01 ·</span>
+      <h2 class="sec-title">Overview</h2>
+    </div>
+    <p class="sec-sub">Who talks to whom, and which credential each piece holds. Nothing here has a public route: the lead long-polls Telegram over an outbound connection, and the other five pods answer only inside the cluster. <span class="diagram-hint">▸ click a highlighted box to jump to its section</span></p>
+    <div class="diagram-wrap">
+      <svg class="diagram" viewBox="0 0 760 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram: I talk to the lead agent through Telegram; the lead delegates to the coder and the reviewer, and all three reach GitHub, the Kubernetes API and Cloudflare only through three MCP servers">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6"></path>
+          </marker>
+          <marker id="arrow-dim" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#9ca3af"></path>
+          </marker>
+        </defs>
+
+        <!-- the namespace -->
+        <g class="clickable" data-href="#boundaries">
+          <rect x="10" y="164" width="740" height="318" rx="8" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.6"></rect>
+          <text x="26" y="184" font-size="11" font-family="JetBrains Mono, monospace" fill="#3b82f6" opacity="0.85">ns: agents</text>
+        </g>
+
+        <!-- you -->
+        <g class="clickable" data-href="#policy">
+          <rect x="280" y="14" width="200" height="46" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+          <text x="380" y="35" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">Me · Telegram</text>
+          <text x="380" y="51" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">allow-listed users only</text>
+        </g>
+        <line x1="380" y1="60" x2="380" y2="88" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+
+        <rect x="260" y="92" width="240" height="46" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="380" y="113" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">Telegram Bot API</text>
+        <text x="380" y="129" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">long polling · outbound only</text>
+        <line x1="380" y1="138" x2="380" y2="196" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+
+        <!-- models and memory -->
+        <g class="clickable" data-href="#models">
+          <rect x="20" y="92" width="190" height="46" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+          <text x="115" y="113" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">Azure AI Foundry</text>
+          <text x="115" y="129" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">models · HTTPS</text>
+        </g>
+        <path d="M 215 231 L 110 231 L 110 142" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrow-dim)"></path>
+        <text x="104" y="203" font-size="10" fill="currentColor" opacity="0.7" text-anchor="end">model calls</text>
+        <text x="104" y="216" font-size="10" fill="currentColor" opacity="0.7" text-anchor="end">all agents</text>
+
+        <g class="clickable" data-href="#memory">
+          <rect x="550" y="92" width="190" height="46" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+          <text x="645" y="113" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">Autonomous Database</text>
+          <text x="645" y="129" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">memory · own schema</text>
+        </g>
+        <path d="M 545 231 L 650 231 L 650 142" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrow-dim)"></path>
+        <text x="656" y="203" font-size="10" fill="currentColor" opacity="0.7">ORDS · HTTPS</text>
+        <text x="656" y="216" font-size="10" fill="currentColor" opacity="0.7">lead only</text>
+
+        <!-- the agents -->
+        <g class="clickable" data-href="#agents">
+          <rect x="215" y="200" width="330" height="62" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+          <text x="380" y="222" font-size="14" font-weight="600" fill="currentColor" text-anchor="middle">agent-lead</text>
+          <text x="380" y="238" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">Telegram bot · agent loop · policy · approvals</text>
+          <text x="380" y="254" font-size="10" font-family="JetBrains Mono, monospace" fill="#3b82f6" text-anchor="middle">holds: model creds · bot token · GitHub token · DB</text>
+        </g>
+        <line x1="300" y1="262" x2="215" y2="288" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <text x="205" y="281" font-size="10" fill="currentColor" opacity="0.7" text-anchor="end">coder__ask · asks me</text>
+        <line x1="460" y1="262" x2="545" y2="288" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <text x="556" y="281" font-size="10" fill="currentColor" opacity="0.7">reviewer__ask · no button</text>
+
+        <g class="clickable" data-href="#agents">
+          <rect x="40" y="292" width="250" height="56" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+          <text x="165" y="312" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">agent-coder</text>
+          <text x="165" y="327" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">writes code · gpt-5.3-codex</text>
+          <text x="165" y="341" font-size="10" font-family="JetBrains Mono, monospace" fill="#3b82f6" text-anchor="middle">holds: model key · GitHub token</text>
+        </g>
+        <g class="clickable" data-href="#agents">
+          <rect x="470" y="292" width="250" height="56" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+          <text x="595" y="312" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">agent-reviewer</text>
+          <text x="595" y="327" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">reads, never writes · gpt-5.1-codex-max</text>
+          <text x="595" y="341" font-size="10" font-family="JetBrains Mono, monospace" fill="#3b82f6" text-anchor="middle">holds: model key · GitHub token</text>
+        </g>
+
+        <!-- MCP, inside the cluster -->
+        <line x1="140" y1="374" x2="620" y2="374" stroke="#9ca3af" stroke-width="1"></line>
+        <line x1="165" y1="348" x2="165" y2="374" stroke="#9ca3af" stroke-width="1"></line>
+        <line x1="380" y1="262" x2="380" y2="374" stroke="#9ca3af" stroke-width="1"></line>
+        <line x1="595" y1="348" x2="595" y2="374" stroke="#9ca3af" stroke-width="1"></line>
+        <text x="487" y="368" font-size="10" fill="currentColor" opacity="0.7" text-anchor="middle">MCP · stateless HTTP</text>
+        <line x1="140" y1="374" x2="140" y2="390" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="380" y1="374" x2="380" y2="390" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="620" y1="374" x2="620" y2="390" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+
+        <g class="clickable" data-href="#acc-github">
+          <rect x="30" y="394" width="220" height="62" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+          <text x="140" y="415" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">mcp-github</text>
+          <text x="140" y="431" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">GitHub's own image · toolsets in Git</text>
+          <text x="140" y="446" font-size="10" font-family="JetBrains Mono, monospace" fill="#3b82f6" text-anchor="middle">holds: nothing</text>
+        </g>
+        <g class="clickable" data-href="#acc-cluster">
+          <rect x="270" y="394" width="220" height="62" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+          <text x="380" y="415" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">mcp-cluster</text>
+          <text x="380" y="431" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">6 read-only tools</text>
+          <text x="380" y="446" font-size="10" font-family="JetBrains Mono, monospace" fill="#3b82f6" text-anchor="middle">RBAC: get · list · watch</text>
+        </g>
+        <g class="clickable" data-href="#acc-cloudflare">
+          <rect x="510" y="394" width="220" height="62" rx="6" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1.5"></rect>
+          <text x="620" y="415" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">mcp-cloudflare</text>
+          <text x="620" y="431" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">14 tools · used by the lead only</text>
+          <text x="620" y="446" font-size="10" font-family="JetBrains Mono, monospace" fill="#3b82f6" text-anchor="middle">holds: Cloudflare token</text>
+        </g>
+
+        <!-- what they reach -->
+        <line x1="140" y1="456" x2="140" y2="508" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="380" y1="456" x2="380" y2="508" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <line x1="620" y1="456" x2="620" y2="508" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow)"></line>
+        <rect x="30" y="512" width="220" height="44" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="140" y="531" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">GitHub</text>
+        <text x="140" y="547" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">repos · pull requests → Flux</text>
+        <rect x="270" y="512" width="220" height="44" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="380" y="531" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">Kubernetes API</text>
+        <text x="380" y="547" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">this cluster · read only</text>
+        <rect x="510" y="512" width="220" height="44" rx="6" fill="rgba(127,127,127,0.08)" stroke="#9ca3af" stroke-width="1"></rect>
+        <text x="620" y="531" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">Cloudflare API</text>
+        <text x="620" y="547" font-size="10.5" fill="currentColor" opacity="0.7" text-anchor="middle">DNS · WAF · tunnel · cache</text>
+
+        <text x="380" y="586" font-size="10" fill="currentColor" opacity="0.6" text-anchor="middle" font-style="italic">metrics from the lead and the coder → Prometheus · a JSON audit record for every tool call → Loki</text>
+      </svg>
+    </div>
+    <p class="diagram-swipe">◂ swipe to see the whole diagram ▸</p>
+  </section>
+
+  <!-- 02 AGENTS -->
+  <section class="block" id="agents">
+    <div class="sec-head">
+      <span class="sec-num">02 ·</span>
+      <h2 class="sec-title">Three agents, one codebase</h2>
+    </div>
+    <p class="sec-sub">An agent is a YAML profile, not a program: a system prompt, a model, the MCP servers it may use, allowed and denied tools, and its limits. All three run the same Python package from the same image.</p>
+
+    <div class="table-scroll">
+      <table class="slo-table wide">
+        <thead><tr><th>agent</th><th>talks to</th><th>model</th><th>MCP servers</th><th>GitHub writes</th><th>Cloudflare</th><th>steps</th></tr></thead>
+        <tbody>
+          <tr><td class="svc">lead</td><td>me, in Telegram</td><td><code>gpt-5.6-luna</code>, switchable per chat with <code>/model</code></td><td>github · cluster · cloudflare · coder · reviewer</td><td>direct push; the GitOps repo through pull requests only</td><td>reads freely; writes ask me first</td><td class="mono">30</td></tr>
+          <tr><td class="svc">coder</td><td>the lead, as the tool <code>coder__ask</code></td><td><code>gpt-5.3-codex</code></td><td>github · cluster</td><td>direct push; the GitOps repo through pull requests only</td><td>no access</td><td class="mono">40</td></tr>
+          <tr><td class="svc">reviewer</td><td>the lead, as the tool <code>reviewer__ask</code></td><td><code>gpt-5.1-codex-max</code></td><td>github · cluster</td><td>none: read-only</td><td>no access</td><td class="mono">20</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>Delegation</h4>
+        <ul>
+          <li><strong>The lead hands work over as a tool call.</strong><span class="why">The coder and the reviewer run the same agent loop behind a single MCP tool, <code>ask(task, context)</code>. Each call starts a fresh conversation and returns the answer, the number of steps and why it stopped.</span></li>
+          <li><strong>Over the cluster network, not through Telegram.</strong><span class="why">A Telegram bot never receives another bot's messages. As a tool call, the hand-off also passes the same policy check and lands in the same audit log as everything else.</span></li>
+          <li><strong>Workers keep no memory and cannot ask a human.</strong><span class="why">A task has to be complete in itself. Anything that needs my button stays with the lead, which is why the coder has no Cloudflare access at all.</span></li>
+          <li><strong>Small edits stay with the lead.</strong><span class="why">A round trip to the coder costs more than a one-line change, and the lead's prompt says so. It also tells the lead to check the commit itself before reporting what the coder did.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Independent review</h4>
+        <ul>
+          <li><strong>Every change is sent for review before it is reported done.</strong><span class="why">The lead's instructions say so, for its own changes too and for the small ones: a one-line manifest reaches the live cluster as fast as a large one.</span></li>
+          <li><strong>A different model from the author.</strong><span class="why">Most code is written by <code>gpt-5.3-codex</code>, and a review by the same model would inherit its blind spots. The choice is about independence, not power.</span></li>
+          <li><strong>It reads and never writes.</strong><span class="why">Its profile allows read tools by name and denies the common write verbs as a backstop, and its GitHub write mode is read-only. Both limits live in the agent, not in the token, which it shares with the coder. It describes what to fix; it does not fix it.</span></li>
+          <li><strong>The first line is the verdict.</strong><span class="why"><code>APPROVE</code> or <code>CHANGES REQUESTED</code>, then findings, each with a file and what will break. Only files it actually opened, no invented issues, no style notes. The lead is told to show me the verdict as written.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-head"><span class="lbl">Agent profile — ai-agents-platform/agents/reviewer.yaml (excerpt, comments translated)</span></div>
+<pre class="code"><code><span class="k">model</span>: <span class="s">"gpt-5.1-codex-max"</span>
+<span class="k">mcp_servers</span>:
+  - github
+  - cluster
+<span class="c"># read tools by name; an empty list would mean "everything"</span>
+<span class="k">allow_tools</span>:
+  - <span class="s">"github__get_*"</span>
+  - <span class="s">"github__list_*"</span>
+  - <span class="s">"github__search_*"</span>
+  - <span class="s">"github__pull_request_read"</span>
+  - <span class="s">"github__issue_read"</span>
+  - <span class="s">"cluster__*"</span>
+<span class="c"># belt and braces: deny wins over allow</span>
+<span class="k">deny_tools</span>:
+  - <span class="s">"github__create_*"</span>
+  - <span class="s">"github__update_*"</span>
+  - <span class="s">"github__delete_*"</span>
+  - <span class="s">"github__merge_*"</span>
+  - <span class="s">"github__push_*"</span>
+<span class="k">max_steps</span>: 20</code></pre>
+    </div>
+  </section>
+
+  <!-- 03 CREDENTIALS -->
+  <section class="block" id="boundaries">
+    <div class="sec-head">
+      <span class="sec-num">03 ·</span>
+      <h2 class="sec-title">One credential boundary per pod</h2>
+    </div>
+    <p class="sec-sub">Each credential is mounted only in the pods that use it, and only one identity in the namespace has any Kubernetes permissions.</p>
+
+    <div class="table-scroll">
+      <table class="slo-table wide">
+        <thead><tr><th>pod</th><th>holds</th><th>Kubernetes RBAC</th><th>reaches</th></tr></thead>
+        <tbody>
+          <tr><td class="svc">agent-lead</td><td>the model credentials, its Telegram bot token, the GitHub token, its database password</td><td>none</td><td>Telegram, Azure, the database and the five other pods</td></tr>
+          <tr><td class="svc">agent-coder</td><td>the model API key, the GitHub token</td><td>none</td><td>Azure, mcp-github, mcp-cluster</td></tr>
+          <tr><td class="svc">agent-reviewer</td><td>the model API key, the GitHub token</td><td>none</td><td>Azure, mcp-github, mcp-cluster</td></tr>
+          <tr><td class="svc">mcp-github</td><td>nothing: the calling agent's token arrives with each request</td><td>none</td><td>GitHub</td></tr>
+          <tr><td class="svc">mcp-cluster</td><td>nothing</td><td><code>get</code> · <code>list</code> · <code>watch</code>, cluster-wide</td><td>the Kubernetes API</td></tr>
+          <tr><td class="svc">mcp-cloudflare</td><td>the Cloudflare API token, which no other pod has</td><td>none</td><td>Cloudflare</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>Kubernetes</h4>
+        <ul>
+          <li><strong>One binding in the namespace.</strong><span class="why">Five Deployments have a ServiceAccount of their own, mcp-github runs as the namespace default, and only mcp-cluster's is bound. Its ClusterRole grants <code>get</code>, <code>list</code> and <code>watch</code> on pods and their logs, events, namespaces, nodes, workloads, jobs and cronjobs, Services and endpoints, ConfigMaps, PVCs, ingresses, gateways and routes. The three agents have no Role or ClusterRole at all.</span></li>
+          <li><strong>What the role leaves out, on purpose.</strong><span class="why">Secrets, <code>pods/exec</code>, attach and port-forward, every write verb and every wildcard. A change to the cluster is a pull request to the GitOps repository, which Flux applies.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>GitHub, Cloudflare and secrets</h4>
+        <ul>
+          <li><strong>GitHub's own MCP server, self-hosted.</strong><span class="why">Its toolsets are fixed by flags in Git and enforced by the server. On GitHub's hosted endpoint they would be headers sent by the very agent being limited.</span></li>
+          <li><strong>Read-only GitHub is one commit away.</strong><span class="why">The manifest carries the alternative with <code>--read-only</code> commented out; switching is a commit that Flux applies within about a minute.</span></li>
+          <li><strong>The Cloudflare token lives in one pod.</strong><span class="why">mcp-cloudflare holds it and never hands it out.</span></li>
+          <li><strong>Every secret comes from OCI Vault.</strong><span class="why">External Secrets syncs them into the namespace every hour; none is in Git. The GitHub token is fine-grained and limited to the repositories the agents work in, and the lead has a Telegram bot of its own, separate from the AI SRE agent's.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-head"><span class="lbl">ClusterRole — personal-k8s/applications/agents/rbac.yaml (comment)</span></div>
+<pre class="code"><code><span class="c"># Explicitly absent, and intentionally so:</span>
+<span class="c">#   - secrets           (the agent must never be able to read credentials)</span>
+<span class="c">#   - pods/exec, pods/attach, pods/portforward</span>
+<span class="c">#   - any create/update/patch/delete</span>
+<span class="c">#   - any wildcard resource or verb</span>
+<span class="c">#</span>
+<span class="c"># Cluster CHANGES do not happen here. They happen as a pull request against the</span>
+<span class="c"># personal-k8s repository, which Flux then reconciles.</span></code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-head"><span class="lbl">GitHub MCP server — personal-k8s/applications/agents/mcp-github.yaml (excerpt)</span></div>
+<pre class="code"><code><span class="k">args</span>:
+  - <span class="s">"http"</span>
+  - <span class="s">"--toolsets"</span>
+  - <span class="s">"repos,issues,pull_requests,git,context"</span>
+<span class="c"># --- to make the agent read-only on GitHub: uncomment this block, comment</span>
+<span class="c"># --- out the one above, and commit. Flux applies it within about a minute.</span>
+<span class="c"># args:</span>
+<span class="c">#   - "http"</span>
+<span class="c">#   - "--read-only"</span>
+<span class="c">#   - "--toolsets"</span>
+<span class="c">#   - "repos,issues,pull_requests,git,context"</span></code></pre>
+    </div>
+  </section>
+
+  <!-- 04 POLICY AND APPROVAL -->
+  <section class="block" id="policy">
+    <div class="sec-head">
+      <span class="sec-num">04 ·</span>
+      <h2 class="sec-title">Local policy and human approval</h2>
+    </div>
+    <p class="sec-sub">Two layers decide every tool call an agent sends, before it goes out. The profile decides which tools the model sees at all; the policy reads the call's arguments and answers allow, deny or ask me. Each agent also has a GitHub write mode in its ConfigMap: direct push for the lead and the coder, read-only for the reviewer, and a pull-requests-only mode in between. Web search is the one exception to all of this: Azure runs it on its own side, so it never reaches the policy.</p>
+
+    <ol class="flow">
+      <li><b>model</b>proposes a tool call with its arguments</li>
+      <li><b>profile</b>a tool outside the profile was never offered; <code>github__delete_*</code> is denied to all three</li>
+      <li><b>policy</b>reads the arguments: allow, deny, or ask</li>
+      <li><b>me</b>the tool and every argument in Telegram, with two buttons: run or reject</li>
+      <li><b>result</b>it runs, or the model is told why not and that this is a decision, not an error</li>
+    </ol>
+
+    <div class="table-scroll">
+      <table class="slo-table wide">
+        <thead><tr><th>the call</th><th>decision</th><th>why</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">a read: <code>get_</code>, <code>list_</code>, <code>search_</code>, <code>read_</code>, <code>describe_</code> …</td><td><span class="dec run">runs</span></td><td>A tool counts as a read if its name starts with a read verb, or if it is one of two GitHub read tools listed by name. Any other name is treated as a write.</td></tr>
+          <tr><td class="mono">a branch or a pull request in the GitOps repo</td><td><span class="dec run">runs</span></td><td>A pull request has a diff a person can read.</td></tr>
+          <tr><td class="mono">merging that pull request</td><td><span class="dec ask">asks me</span></td><td>Flux applies the merged branch to the live cluster within minutes.</td></tr>
+          <tr><td class="mono">any other write to the GitOps repo's main branch</td><td><span class="dec deny">refused</span></td><td>Whatever the write mode, the policy refuses it: a change to the cluster goes through a pull request.</td></tr>
+          <tr><td class="mono">a write to another repository</td><td><span class="dec run">runs</span></td><td>In direct-push mode. A bad commit can be reverted, and the lead's instructions send it to the reviewer before the work is reported done.</td></tr>
+          <tr><td class="mono">a Cloudflare write: DNS, WAF, tunnel, cache</td><td><span class="dec ask">asks me</span></td><td>A deleted DNS record takes a site offline until someone notices.</td></tr>
+          <tr><td class="mono">a write to the cluster</td><td><span class="dec deny">refused</span></td><td>The cluster changes through Git only. The refusal says so and points to a pull request; the ClusterRole could not do it anyway.</td></tr>
+          <tr><td class="mono">a task for the coder</td><td><span class="dec ask">asks me</span></td><td>The policy has no rule of its own for the coder's server, and a server without one is gated rather than guessed.</td></tr>
+          <tr><td class="mono">a review</td><td><span class="dec run">runs</span></td><td>The reviewer cannot change anything, and a review that costs a button press is a review that gets skipped.</td></tr>
+          <tr><td class="mono">remembering or forgetting a fact</td><td><span class="dec run">runs</span></td><td>The agent's own two tables; a wrong fact is easy to see and drop (see Memory).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>How approval works</h4>
+        <ul>
+          <li><strong>The loop simply waits.</strong><span class="why">When the policy says "ask", the turn awaits a callback. The Telegram layer posts the tool and its complete arguments with the two buttons, and the press resolves the wait. The whole turn stays one coroutine, with no pending state to store and resume.</span></li>
+          <li><strong>Silence is a no.</strong><span class="why">No answer within ten minutes counts as a rejection. The allow-list is checked again on the press, because anyone who can see the message can press the button.</span></li>
+          <li><strong>A refusal is a decision, not a failure.</strong><span class="why">Every policy refusal reaches the model as "denied by local policy". The lead's prompt tells it not to retry or look for a way around, but to explain and offer a path that is allowed; a worker reports the refusal in its answer.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Who can ask, and who can be asked</h4>
+        <ul>
+          <li><strong>Workers have nobody to ask.</strong><span class="why">In the coder and the reviewer, a call that needs approval is refused with a reason of its own, so the worker finishes and lists what still needs confirming, and the lead asks me.</span></li>
+          <li><strong>A fail-closed allow-list.</strong><span class="why">The bot answers listed Telegram users only. An empty list would refuse everyone, so the process refuses to start with one.</span></li>
+          <li><strong>A button press gets through mid-turn.</strong><span class="why">Updates are handled concurrently, so an approval or <code>/cancel</code> is not queued behind the turn it is meant to affect, and a new message is turned away while a turn runs.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 ONE TURN -->
+  <section class="block" id="turn">
+    <div class="sec-head">
+      <span class="sec-num">05 ·</span>
+      <h2 class="sec-title">One request, end to end</h2>
+    </div>
+    <p class="sec-sub">A turn is a loop: call the model, run the tool calls it asked for, feed the results back, until it answers without one. Every way out of the loop has a name.</p>
+
+    <ol class="steps">
+      <li><strong>The message passes the allow-list.</strong> The system prompt is the profile's prompt plus the facts stored about me.</li>
+      <li><strong>Earlier history in the lead's chat is trimmed</strong> to its 120k-token context budget, by whole turns and four turns at a time: a tool result never loses the call that asked for it, and the start of the prompt stays stable, so the provider's prompt cache keeps hitting. The current turn is always sent whole, and the coder and the reviewer start every task fresh.</li>
+      <li><strong>The model answers.</strong> Each tool call it makes goes through the policy and runs on its MCP server, with a two-minute timeout, or fifteen for a task delegated to the coder.</li>
+      <li><strong>Each result is clipped to 12,000 characters</strong> before it enters the transcript, because tool output is sent again as input on every later step.</li>
+      <li><strong>The answer goes back with a short usage footer</strong>: model, steps, the stop reason, tokens with the cache hit rate, and the number of tool calls with their total time.</li>
+    </ol>
+
+    <div class="table-scroll">
+      <table class="slo-table wide">
+        <thead><tr><th>stopped_because</th><th>when</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">completed</td><td>The model answered without asking for a tool.</td></tr>
+          <tr><td class="mono">max_steps</td><td>The step limit: 30 for the lead, 40 for the coder, 20 for the reviewer.</td></tr>
+          <tr><td class="mono">token_budget</td><td>The turn's billable tokens, uncached input plus output, passed the ceiling: 300k for the lead and the reviewer, 500k for the coder. A backstop against a pathological turn, not a limit ordinary work meets.</td></tr>
+          <tr><td class="mono">cancelled</td><td><code>/cancel</code>, checked between steps.</td></tr>
+          <tr><td class="mono">model_output_limit</td><td>The model hit its own output limit. A tool call that may have been cut short is never run.</td></tr>
+          <tr><td class="mono">llm_error</td><td>The model call failed; the error type is counted in the metrics.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="code-block">
+      <div class="code-head"><span class="lbl">The turn loop — ai-agents-platform/src/agentcore/loop.py (abridged, comments added)</span></div>
+<pre class="code"><code><span class="k">while</span> steps &lt; self.max_steps:
+    <span class="k">if</span> cancel <span class="k">is not</span> None <span class="k">and</span> cancel.is_set():
+        stopped = <span class="s">"cancelled"</span>; <span class="k">break</span>
+    <span class="k">if</span> usage.billable &gt; self.max_billable:        <span class="c"># uncached input + output</span>
+        stopped = <span class="s">"token_budget"</span>; <span class="k">break</span>
+    steps += 1
+    messages = chat.transcript(system_prompt, max_tokens=token_budget)
+    response = <span class="k">await</span> self._llm.complete(model=model, messages=messages, tools=catalog.specs <span class="k">or</span> None)
+    usage = usage + response.usage
+    <span class="k">if</span> response.finish_reason == <span class="s">"length"</span>:        <span class="c"># never run a truncated call</span>
+        stopped = <span class="s">"model_output_limit"</span>; <span class="k">break</span>
+    <span class="k">if not</span> response.tool_calls:
+        stopped = <span class="s">"completed"</span>; <span class="k">break</span>
+    <span class="k">for</span> call <span class="k">in</span> response.tool_calls:              <span class="c"># policy, approval, MCP call, audit line</span>
+        result_text, called, ms = <span class="k">await</span> self._execute(call, ...)
+        chat.append({<span class="s">"role"</span>: <span class="s">"tool"</span>, <span class="s">"tool_call_id"</span>: call.id, <span class="s">"content"</span>: _clip(result_text)})
+<span class="k">else</span>:
+    stopped = <span class="s">"max_steps"</span></code></pre>
+    </div>
+  </section>
+
+  <!-- 06 MCP SERVERS -->
+  <section class="block" id="mcp">
+    <div class="sec-head">
+      <span class="sec-num">06 ·</span>
+      <h2 class="sec-title">MCP servers</h2>
+    </div>
+    <p class="sec-sub">Three tool servers, each its own Deployment. The cluster and Cloudflare servers are written for this platform on a shared skeleton. The coder and the reviewer sit on the same skeleton, because the lead calls them over MCP like any other tool server. The GitHub server is GitHub's own image.</p>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>The in-house servers</h4>
+        <ul>
+          <li><strong>MCP SDK 2.x over Streamable HTTP, stateless.</strong><span class="why">The servers keep no session state, so one can restart or scale while an agent is working. The client opens a fresh MCP session per call and keeps only the HTTP connection pool alive.</span></li>
+          <li><strong>Health that means something.</strong><span class="why"><code>/healthz</code> for liveness, a <code>/readyz</code> that checks the upstream, and a <code>/metrics</code> endpoint; section 09 says which ones are scraped.</span></li>
+          <li><strong>Errors the model can act on.</strong><span class="why">A tool returns <code>{ok: false, error, hint}</code> instead of raising, so the model reads one short line it can act on rather than a stack trace.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>On the agent's side</h4>
+        <ul>
+          <li><strong>Namespaced tool names.</strong><span class="why"><code>server__tool</code>, so two servers can share a tool name and a profile can address a whole server as <code>github__*</code>.</span></li>
+          <li><strong>Inside the model API's limits.</strong><span class="why">Tool descriptions are cut to 1,024 characters and names to 64. GitHub's server ships longer descriptions, and a single one over the limit fails the whole request.</span></li>
+          <li><strong>Header-bound parameters.</strong><span class="why">GitHub's server marks <code>owner</code> and <code>repo</code> with <code>x-mcp-header</code>, and the client echoes them as <code>Mcp-Param-*</code> headers, so a gateway could see which repository a call touches without parsing the body.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <article class="acc" id="acc-cluster">
+      <div class="acc-head" role="button" tabindex="0" aria-expanded="false">
+        <span class="acc-tag">CLUSTER</span>
+        <div class="acc-titles">
+          <h3>mcp-cluster — six read-only tools</h3>
+          <div class="acc-meta">own code · its own ServiceAccount with a get/list/watch ClusterRole · holds no secret</div>
+        </div>
+        <span class="acc-chev"></span>
+      </div>
+      <div class="acc-body">
+        <ul>
+          <li><strong>list_namespaces</strong> and <strong>list_pods</strong>: phase, ready containers, restarts, node, waiting reasons and images, with a filter for unhealthy pods only.</li>
+          <li><strong>get_pod_logs</strong>: a tail of 1 to 500 lines, including the previous container after a crash.</li>
+          <li><strong>list_events</strong>: up to 100 events, newest last, each message cut to 300 characters.</li>
+          <li><strong>get_deployment</strong> and <strong>get_service</strong>: replicas, strategy, images and conditions; ports and up to 20 endpoints.</li>
+        </ul>
+        <p>Every answer is a summary, not the raw object. A pod is several kilobytes of JSON that is almost all irrelevant to why it is unhealthy, and ten of them would push the conversation out of the context window. There are no write tools, and none could work: the ServiceAccount has no write verb.</p>
+      </div>
+    </article>
+
+    <article class="acc" id="acc-cloudflare">
+      <div class="acc-head" role="button" tabindex="0" aria-expanded="false">
+        <span class="acc-tag">CLOUDFLARE</span>
+        <div class="acc-titles">
+          <h3>mcp-cloudflare — fourteen tools written for this platform</h3>
+          <div class="acc-meta">own code · the only holder of the Cloudflare token · every write the lead makes asks me first</div>
+        </div>
+        <span class="acc-chev"></span>
+      </div>
+      <div class="acc-body">
+        <p>Cloudflare's official MCP servers run only on Workers, and the hosted ones do not cover DNS records, WAF rules or tunnel configuration. So this one wraps the REST calls actually needed, named by the verb convention the policy keys off.</p>
+        <ul>
+          <li><strong>5 reads</strong>: <code>list_zones</code>, <code>list_dns_records</code>, <code>list_waf_rules</code>, <code>list_tunnels</code>, <code>get_tunnel_config</code>.</li>
+          <li><strong>9 writes</strong>: create, update and delete for DNS records and for WAF rules, <code>add_tunnel_hostname</code>, <code>update_tunnel_config</code>, <code>purge_cache</code>.</li>
+        </ul>
+        <h4>Two things that break if done naively</h4>
+        <ul>
+          <li><strong>Tunnel ingress is ordered and ends in a catch-all.</strong> A hostname appended after it would never match, so new rules go in front of it. The configuration is replaced as a whole on every change: <code>add_tunnel_hostname</code> reads it, inserts the rule and writes it back, and <code>update_tunnel_config</code> refuses a list that does not end in the catch-all.</li>
+          <li><strong>WAF custom rules live in the Rulesets API.</strong> They sit in the entrypoint ruleset of the <code>http_request_firewall_custom</code> phase, and changing one rule means putting the whole list back. Actions are checked against an allow-list first.</li>
+        </ul>
+        <p>A cache purge takes up to 30 full URLs per call and cannot be mixed with "purge everything".</p>
+        <div class="code-block">
+          <div class="code-head"><span class="lbl">ai-agents-platform/src/mcp_cloudflare/tools.py (abridged)</span></div>
+<pre class="code"><code><span class="k">def</span> insert_before_catchall(ingress, new_rule):
+    rules = [r <span class="k">for</span> r <span class="k">in</span> ingress <span class="k">if not</span> is_catch_all(r)]
+    tail = [r <span class="k">for</span> r <span class="k">in</span> ingress <span class="k">if</span> is_catch_all(r)]
+    rules.append(new_rule)
+    <span class="c"># A config with no catch-all is invalid; supply one rather than PUTting a broken config.</span>
+    <span class="k">if not</span> tail:
+        tail = [{<span class="s">"service"</span>: CATCH_ALL_SERVICE}]
+    <span class="k">return</span> rules + tail[:1]</code></pre>
+        </div>
+      </div>
+    </article>
+
+    <article class="acc" id="acc-github">
+      <div class="acc-head" role="button" tabindex="0" aria-expanded="false">
+        <span class="acc-tag">GITHUB</span>
+        <div class="acc-titles">
+          <h3>mcp-github — GitHub's official server, self-hosted</h3>
+          <div class="acc-meta">GitHub's github-mcp-server image, v1.11.0 · toolsets fixed in Git · holds no credential</div>
+        </div>
+        <span class="acc-chev"></span>
+      </div>
+      <div class="acc-body">
+        <ul>
+          <li><strong>Five toolsets</strong>: <code>repos</code>, <code>issues</code>, <code>pull_requests</code>, <code>git</code> and <code>context</code>. That list is the ceiling on what any agent talking to this pod can do.</li>
+          <li><strong>No credential of its own.</strong> In HTTP mode the server takes <code>Authorization: Bearer</code> from each request, so the GitHub token stays in the agent pods and travels with every call.</li>
+          <li><strong>A TCP probe</strong> rather than an HTTP one: an unauthenticated request is answered with 401.</li>
+          <li><strong>Pinned on purpose.</strong> The image is not under Flux image automation; a new version is a deliberate commit.</li>
+        </ul>
+      </div>
+    </article>
+  </section>
+
+  <!-- 07 MODELS -->
+  <section class="block" id="models">
+    <div class="sec-head">
+      <span class="sec-num">07 ·</span>
+      <h2 class="sec-title">Models on Azure AI Foundry</h2>
+    </div>
+    <p class="sec-sub">One client for both of Azure's APIs, Chat Completions and Responses. Which model uses which is configuration, and before I make a model the default I check it on its endpoint.</p>
+
+    <div class="table-scroll">
+      <table class="slo-table wide">
+        <thead><tr><th>model</th><th>role</th><th>API</th></tr></thead>
+        <tbody>
+          <tr><td class="svc">gpt-5.6-luna</td><td>the lead's default; <code>/model</code> switches a chat to another model from an allow-list</td><td>Responses, with web search hosted by Azure</td></tr>
+          <tr><td class="svc">gpt-5.3-codex</td><td>the coder</td><td>Responses only</td></tr>
+          <tr><td class="svc">gpt-5.1-codex-max</td><td>the reviewer</td><td>Responses only</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>One client</h4>
+        <ul>
+          <li><strong>The plain OpenAI SDK against the Foundry v1 endpoint.</strong><span class="why">No <code>api-version</code>, and the deployment name goes in the <code>model</code> field, so switching the lead's model is a ConfigMap edit, not a release; the coder and the reviewer pin theirs in their profiles. The provider sits behind a one-method interface, so another one would change a file, not the loop.</span></li>
+          <li><strong>The endpoint is configuration, not a guess.</strong><span class="why">The codex models answer only on <code>/responses</code>, and hosted web search exists only there. A list in the ConfigMap says which deployments use it; the model's name never decides.</span></li>
+          <li><strong>Reasoning is carried between steps.</strong><span class="why">A Responses model returns reasoning items with its tool calls. They are replayed verbatim on the next request and stripped before anything goes to <code>/chat/completions</code>, so <code>/model</code> can move a chat between the two APIs mid-conversation.</span></li>
+          <li><strong>Usage counts what is billed.</strong><span class="why">Input, output, cached and reasoning tokens are tracked apart. The turn's ceiling counts uncached input plus output, because the cached prefix sent again on every step is billed at a fraction.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Chosen by measurement, checked by hand</h4>
+        <ul>
+          <li><strong>The coder's model was picked on a real task.</strong><span class="why">On the same Dockerfile task <code>gpt-5.3-codex</code> answered in 4.0&nbsp;s against 31.8&nbsp;s for <code>gpt-5.6-sol</code>, and caught the <code>readOnlyRootFilesystem</code> requirement that <code>gpt-5-mini</code> missed.</span></li>
+          <li><strong>A preflight command, run before the default changes.</strong><span class="why"><code>python -m agentcore.preflight &lt;model&gt;</code> replays the recent history of the longest stored conversation, asks a question only a tool can answer, and reads a live web page, which must show a <code>web_search_call</code>. It exits 0 only if nothing failed, so it could gate a pipeline; today I run it by hand.</span></li>
+          <li><strong>Why those three checks.</strong><span class="why">The endpoint a model is routed to decides which capabilities exist, and "does it answer?" tests none of them. A model can reply fluently and still reject the stored history, never call a tool, or answer from memory instead of reading the page.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 MEMORY -->
+  <section class="block" id="memory">
+    <div class="sec-head">
+      <span class="sec-num">08 ·</span>
+      <h2 class="sec-title">Memory without a volume</h2>
+    </div>
+    <p class="sec-sub">The agents get no persistent volume: the cluster's Always Free block storage goes to Prometheus. So the lead keeps its history and what it knows about me in the Autonomous Database the URL shortener already uses, in a schema of its own.</p>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>Where it lives</h4>
+        <ul>
+          <li><strong>Same database, separate schema.</strong><span class="why">The schema has no grants on the shortener's data, so an agent holding its own password cannot read or drop another application's table.</span></li>
+          <li><strong>Plain HTTPS, no driver.</strong><span class="why">ORDS REST-Enabled SQL with Basic Auth: no Oracle client library and no wallet in the image.</span></li>
+          <li><strong>Two tables.</strong><span class="why"><code>conversations</code>, one row per message, read back through an index on <code>(agent, chat_id, id)</code> that finds the newest N for a chat without a sort; and <code>facts</code>, a key and a sentence each.</span></li>
+          <li><strong>Each write commits itself.</strong><span class="why">One PL/SQL block per write, and a fact is upserted with a single <code>MERGE</code>, so two concurrent writes cannot race a read-then-write.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>How it behaves</h4>
+        <ul>
+          <li><strong>History survives a restart.</strong><span class="why">The first message after a restart reloads the newest 40 messages, cut back to a clean turn boundary: no tool result without its call, no call without its result.</span></li>
+          <li><strong>Facts have tools of their own.</strong><span class="why"><code>memory__remember</code> and <code>memory__forget</code> run inside the agent and pass the same tool catalogue, allow and deny patterns and policy as any MCP tool. <code>/memories</code> lists the stored facts and <code>/forget</code> drops one.</span></li>
+          <li><strong>It degrades, except where that would mislead.</strong><span class="why">A lost history write is logged and the turn goes on. A failed fact write is reported, so the agent never claims to remember what it did not store.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-head"><span class="lbl">Schema — ai-agents-platform/sql/schema.sql (abridged, comments shortened)</span></div>
+<pre class="code"><code><span class="k">create table</span> conversations (
+  id            <span class="k">number generated always as identity</span>,   <span class="c">-- primary key</span>
+  agent         varchar2(64)  <span class="k">not null</span>,
+  chat_id       <span class="k">number</span>        <span class="k">not null</span>,
+  role          varchar2(16)  <span class="k">not null</span>,
+  content       clob,          <span class="c">-- a long answer exceeds the 32k bind limit</span>
+  tool_calls    clob,
+  tool_call_id  varchar2(128),
+  created_at    <span class="k">timestamp with time zone default</span> systimestamp <span class="k">not null</span>
+);
+<span class="k">create index</span> conversations_by_chat <span class="k">on</span> conversations (agent, chat_id, id);
+
+<span class="k">create table</span> facts (
+  fact_key     varchar2(200)  <span class="k">not null</span>,   <span class="c">-- primary key</span>
+  fact         varchar2(2000) <span class="k">not null</span>,
+  scope        varchar2(64)   <span class="k">default</span> <span class="s">'user'</span> <span class="k">not null</span>,
+  ...
+);</code></pre>
+    </div>
+  </section>
+
+  <!-- 09 METRICS AND AUDIT -->
+  <section class="block" id="observability">
+    <div class="sec-head">
+      <span class="sec-num">09 ·</span>
+      <h2 class="sec-title">Metrics and audit</h2>
+    </div>
+    <p class="sec-sub">The agents are measured like any other service on the platform, and no message text reaches a metric: the metrics count, and the audit log keeps a hash of each call's arguments instead of the arguments. Everything lands in the monitoring stack described on the <a href="https://infra.1ms.my/#observability">platform page</a>.</p>
+
+    <div class="table-scroll">
+      <table class="slo-table wide">
+        <thead><tr><th>metric</th><th>what it measures</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">gen_ai_client_token_usage</td><td>Tokens per model call, by type: input, output, cached, reasoning.</td></tr>
+          <tr><td class="mono">gen_ai_client_operation_duration_seconds</td><td>Model call latency, with the error type when a call failed.</td></tr>
+          <tr><td class="mono">gen_ai_invoke_agent_*</td><td>One turn: how long it took, how many model calls and how many tool calls.</td></tr>
+          <tr><td class="mono">gen_ai_execute_tool_duration_seconds</td><td>Tool latency, per tool.</td></tr>
+          <tr><td class="mono">agent_policy_decisions_total</td><td>What the local policy decided, per tool.</td></tr>
+          <tr><td class="mono">agent_approvals_total · agent_approval_wait_seconds</td><td>Every confirmation an agent asked for: approved or rejected (ten minutes of silence counts as rejected), or unavailable when a worker had nobody to ask; and how long it waited.</td></tr>
+          <tr><td class="mono">agent_turns_total</td><td>How each turn ended, by <code>stopped_because</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>Metrics</h4>
+        <ul>
+          <li><strong>OpenTelemetry GenAI names, as specified.</strong><span class="why">Metric names, units and the token and model-call buckets come from the conventions, so any GenAI observability tool can read them without re-instrumenting. Two token types, cached and reasoning, are added because the spec has nowhere to put them. The conventions are still marked Development, so the code follows the spec's spelling and expects churn.</span></li>
+          <li><strong>Own names only where the standard has none.</strong><span class="why">Policy decisions, approvals and the time a person takes get the <code>agent_</code> prefix, so the two sets never look like one.</span></li>
+          <li><strong>Bounded cardinality.</strong><span class="why">The tool name comes from the model, which can invent one. The label keeps at most 128 distinct values; the rest become <code>other</code>.</span></li>
+          <li><strong>Scraped like everything else.</strong><span class="why">A ServiceMonitor scrapes the lead and the coder every 30 seconds; the reviewer is not scraped yet. The MCP servers' CPU and memory already come from cAdvisor.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Dashboard and audit</h4>
+        <ul>
+          <li><strong>The AI Agents dashboard asks five questions.</strong><span class="why">What it cost, how much it did, where the time went, what was refused and what failed. The top row includes "Waiting on a human, p95".</span></li>
+          <li><strong>Azure's side of the story.</strong><span class="why">Azure Monitor panels show what the client cannot see: throttling, tokens per deployment, server-side latency and content-filter refusals. A service principal with Monitoring Reader on that one resource reads them; metrics only, no exporter pod.</span></li>
+          <li><strong>One audit line per tool call.</strong><span class="why">JSON on stdout, collected into Loki: agent, tool, decision, result, duration, the argument names and a hash of the arguments, never the arguments themselves, which routinely carry whole files. A failed call keeps the start of its error message.</span></li>
+          <li><strong>Secrets are masked by their shape.</strong><span class="why">In the agent processes, a filter on the standard log handlers masks bot tokens, GitHub tokens, bearer and API-key headers and credentials in URLs before a line is written, and the chattiest HTTP clients log warnings only.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <figure class="fig">
+      <img src="/img/grafana-2026-09-ai-agents.png" width="1556" height="1366" alt="Grafana dashboard AI Agents, 5 to 9 September 2026: billable tokens, prompt cache hit rate, turns and the p95 wait for a human over 24 hours; tokens per hour by kind; turns per hour by how they ended; model call and tool call duration; what local policy decided; model errors; the busiest tools; and confirmations asked of a human, approved or rejected" loading="lazy" />
+      <figcaption>The AI Agents dashboard at <code>grafana.1ms.my</code>, 5–9 September 2026. Only the agent panels are shown; the Azure Monitor panels below them are cropped out.</figcaption>
+    </figure>
+
+    <div class="code-block">
+      <div class="code-head"><span class="lbl">Two of the dashboard queries (PromQL)</span></div>
+<pre class="code"><code><span class="c"># Billable tokens (24h): uncached input plus output</span>
+sum(increase(gen_ai_client_token_usage_sum{gen_ai_token_type=<span class="s">"input"</span>}[24h]))
+  - sum(increase(gen_ai_client_token_usage_sum{gen_ai_token_type=<span class="s">"cached"</span>}[24h]))
+  + sum(increase(gen_ai_client_token_usage_sum{gen_ai_token_type=<span class="s">"output"</span>}[24h]))
+
+<span class="c"># Waiting on a human, p95</span>
+histogram_quantile(0.95, sum by (le) (rate(agent_approval_wait_seconds_bucket[24h])))</code></pre>
+    </div>
+  </section>
+
+  <!-- 10 DELIVERY -->
+  <section class="block" id="delivery">
+    <div class="sec-head">
+      <span class="sec-num">10 ·</span>
+      <h2 class="sec-title">Build and delivery</h2>
+    </div>
+    <p class="sec-sub">The same path as every service on the platform: a commit, a native arm64 build, a Flux rollout. Nothing is built or deployed by hand.</p>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>Image and CI</h4>
+        <ul>
+          <li><strong>One image, several entrypoints.</strong><span class="why">The agents and both in-house MCP servers share one set of dependencies, so five Deployments run one image and differ only by command: one pipeline, one registry repository, one image policy.</span></li>
+          <li><strong>Checked before it is built.</strong><span class="why">ruff; an import of the lead's and both MCP servers' entrypoints, which is where a name that moved in the MCP SDK breaks first; then pytest across 29 test files. On a pull request the pipeline ends here; only main is built and pushed.</span></li>
+          <li><strong>Built natively for arm64.</strong><span class="why">The nodes are Ampere A1, and the image is built on GitHub's arm64 runner, with no emulation. It is pushed to OCIR, Oracle's container registry, tagged <code>0.0.&lt;run&gt;</code> and with the short commit SHA.</span></li>
+          <li><strong>Small and unprivileged.</strong><span class="why">A two-stage <code>python:3.12-slim</code> build: only the virtual environment reaches the runtime image, which runs as UID 10001 and carries the agent profiles as data.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Rollout and runtime</h4>
+        <ul>
+          <li><strong>Flux rolls it out.</strong><span class="why">Image automation picks the newest tag and commits the bump to the GitOps repository. CI posts each build and Flux each rollout to <a href="https://t.me/onemsplatform" target="_blank" rel="noopener">t.me/onemsplatform</a>.</span></li>
+          <li><strong>Restricted pods.</strong><span class="why">Non-root, seccomp RuntimeDefault, no privilege escalation, a read-only root filesystem and all capabilities dropped. The only writable path is an <code>emptyDir</code> at <code>/tmp</code>, and mcp-github has none at all.</span></li>
+          <li><strong>One poller per bot token.</strong><span class="why">Telegram allows a single long-polling client per token, so the lead uses the <code>Recreate</code> strategy: the old pod stops before the new one starts.</span></li>
+          <li><strong>Readiness checks the real dependency.</strong><span class="why">The lead is Ready only while its Telegram poller is running; mcp-cluster only while it can list namespaces through the API server, so broken RBAC shows up as NotReady; mcp-cloudflare only while Cloudflare accepts its token.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <article class="acc" id="acc-deployments">
+      <div class="acc-head" role="button" tabindex="0" aria-expanded="false">
+        <span class="acc-tag">PODS</span>
+        <div class="acc-titles">
+          <h3>The six Deployments</h3>
+          <div class="acc-meta">command · requests · memory limit · probes, from personal-k8s/applications/agents</div>
+        </div>
+        <span class="acc-chev"></span>
+      </div>
+      <div class="acc-body">
+        <div class="table-scroll">
+          <table class="slo-table">
+            <thead><tr><th>Deployment</th><th>command</th><th>requests</th><th>memory limit</th><th>probes</th></tr></thead>
+            <tbody>
+              <tr><td class="svc">agent-lead</td><td>python -m agentcore</td><td>50m · 96Mi</td><td>256Mi</td><td>/healthz · /readyz</td></tr>
+              <tr><td class="svc">agent-coder</td><td>python -m mcp_agent</td><td>50m · 192Mi</td><td>512Mi</td><td>/healthz · /readyz</td></tr>
+              <tr><td class="svc">agent-reviewer</td><td>python -m mcp_agent</td><td>50m · 192Mi</td><td>512Mi</td><td>/healthz · /readyz</td></tr>
+              <tr><td class="svc">mcp-cluster</td><td>python -m mcp_cluster</td><td>20m · 64Mi</td><td>192Mi</td><td>/healthz · /readyz</td></tr>
+              <tr><td class="svc">mcp-cloudflare</td><td>python -m mcp_cloudflare</td><td>20m · 64Mi</td><td>192Mi</td><td>/healthz · /readyz</td></tr>
+              <tr><td class="svc">mcp-github</td><td>github-mcp-server http</td><td>20m · 32Mi</td><td>128Mi</td><td>TCP</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>No CPU limits, so a burst is not throttled; memory is limited. Every pod sets <code>ndots: 1</code>, because each peer is addressed by its full name and the default made most DNS lookups wasted search-suffix attempts.</p>
+      </div>
+    </article>
+  </section>
+
+  <!-- 11 DECISIONS -->
+  <section class="block" id="decisions">
+    <div class="sec-head">
+      <span class="sec-num">11 ·</span>
+      <h2 class="sec-title">Decisions and trade-offs</h2>
+    </div>
+    <p class="sec-sub">Why it is built this way, and what that costs.</p>
+
+    <div class="cols-2">
+      <div class="panel">
+        <h4>Decisions</h4>
+        <ul>
+          <li><strong>Credentials are split by pod</strong><span class="why">not by repository and not by prompt. The agents hold no cluster role and no Cloudflare token; mcp-cluster has the only RBAC binding and mcp-cloudflare the only Cloudflare token, and the GitHub token travels from the agents to mcp-github with each request.</span></li>
+          <li><strong>Delegation over MCP, not a protocol of my own</strong><span class="why">the lead uses one interface for infrastructure tools and for other agents, and every hand-off is checked and logged the same way.</span></li>
+          <li><strong>Gate rather than guess</strong><span class="why">a tool whose name is not a read verb counts as a write, and a server the policy has no rule for asks first instead of being trusted.</span></li>
+          <li><strong>Reuse GitHub's server, write Cloudflare's</strong><span class="why">GitHub's official image can be self-hosted and pinned; Cloudflare's could not be self-hosted and did not cover what was needed.</span></li>
+          <li><strong>Memory as two in-process tools, not another server</strong><span class="why">another server would mean another Deployment, another copy of the database password and a network hop to a table the agent can already write.</span></li>
+          <li><strong>Standard metric names first</strong><span class="why">the dashboards stay portable, and only what the convention cannot express gets a name of its own.</span></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Known limits, accepted for now</h4>
+        <ul>
+          <li><strong>A pending approval does not survive a restart.</strong><span class="why">It lives in the coroutine that waits for it, so a rollout in the middle of an approval drops it and the request has to be repeated. A durable approval store is the next step.</span></li>
+          <li><strong>Single replicas.</strong><span class="why">A rollout of the lead leaves a short gap while the new pod starts, and a worker that restarts drops the task it was running.</span></li>
+          <li><strong>No alerts on the agent metrics yet.</strong><span class="why">They are watched on the dashboard only.</span></li>
+          <li><strong>Facts are loaded whole.</strong><span class="why">Fine while they are few; past that, search over facts and history, since the database supports vectors.</span></li>
+          <li><strong>Some rules live only in the policy.</strong><span class="why">Approvals, the reviewer's read-only mode and the rule against pushing to the GitOps repository's main branch are enforced inside the agent. RBAC, the GitHub toolsets and the token's repository scope bound everything else from outside it.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div>
+      <span class="tag">built · operated · documented · monitored by <a href="https://aboutme.1ms.my/" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Aaron Shemtov</a></span>
+    </div>
+    <div class="foot-nav">
+      <a href="https://1ms.my/"><span>1ms.my</span><span class="ribbon-sub">link shortener</span></a>
+      <a href="https://aboutme.1ms.my/">about me</a>
+      <a href="https://infra.1ms.my/">platform architecture</a>
+      <a href="https://infra.1ms.my/agents/">agentic AI</a>
+      <a href="https://infra.1ms.my/#acc-sre">AI SRE agent</a>
+      <a href="https://secrets.1ms.my/">secrets toolkit</a>
+      <a href="https://myip.1ms.my/">IP checker</a>
+      <a href="https://grafana.1ms.my/" target="_blank" rel="noopener"><span>grafana</span><span class="ribbon-ext">↗</span></a>
+      <a href="https://t.me/onemsplatform" target="_blank" rel="noopener"><span>telegram</span><span class="ribbon-ext">↗</span></a>
+      <a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener"><span>source</span><span class="ribbon-ext">↗</span></a>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+  // theme toggle
+  var sun = document.getElementById('icon-sun');
+  var moon = document.getElementById('icon-moon');
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    if (t === 'dark') { sun.style.display = ''; moon.style.display = 'none'; }
+    else              { sun.style.display = 'none'; moon.style.display = ''; }
+    try { localStorage.setItem('theme', t); } catch(e){}
+  }
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+  document.getElementById('theme-btn').addEventListener('click', function(){
+    var cur = document.documentElement.getAttribute('data-theme') || 'light';
+    applyTheme(cur === 'light' ? 'dark' : 'light');
+  });
+
+  // anchors land below the sticky ribbon, which wraps onto several lines on a phone
+  var ribbon = document.querySelector('.ribbon');
+  function measureRibbon(){
+    if (ribbon) document.documentElement.style.setProperty('--ribbon-h', ribbon.offsetHeight + 'px');
+  }
+  measureRibbon();
+  window.addEventListener('resize', measureRibbon);
+
+  // accordions
+  var cards = document.querySelectorAll('.acc');
+  var bulk = document.getElementById('bulk-toggle');
+  function setOpen(card, open){
+    card.classList.toggle('open', open);
+    var head = card.querySelector('.acc-head');
+    if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  function syncBulk(){
+    if (!bulk) return;
+    var allOpen = cards.length > 0 && document.querySelectorAll('.acc.open').length === cards.length;
+    bulk.classList.toggle('all-open', allOpen);
+    bulk.textContent = allOpen ? 'Collapse all' : 'Expand all';
+  }
+  document.querySelectorAll('.acc-head').forEach(function(h){
+    function toggle(){ setOpen(h.parentElement, !h.parentElement.classList.contains('open')); syncBulk(); }
+    h.addEventListener('click', toggle);
+    h.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+  });
+  if (bulk) {
+    bulk.addEventListener('click', function(){
+      var allOpen = document.querySelectorAll('.acc.open').length === cards.length;
+      cards.forEach(function(a){ setOpen(a, !allOpen); });
+      syncBulk();
+    });
+  }
+
+  // jump to a section or an accordion; an accordion opens on the way
+  function goTo(id, smooth){
+    var el = id ? document.getElementById(id) : null;
+    if (!el) return false;
+    if (el.classList.contains('acc')) { setOpen(el, true); syncBulk(); }
+    el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+    return true;
+  }
+
+  // clickable diagram nodes: a small ↗ in the corner, and a jump to their section
+  document.querySelectorAll('.diagram g.clickable').forEach(function(g){
+    var rect = g.querySelector('rect');
+    if (rect) {
+      var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', parseFloat(rect.getAttribute('x')) + parseFloat(rect.getAttribute('width')) - 12);
+      t.setAttribute('y', parseFloat(rect.getAttribute('y')) + 14);
+      t.setAttribute('font-size', '11');
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('class', 'click-mark');
+      t.textContent = '↗';
+      g.appendChild(t);
+    }
+    g.addEventListener('click', function(){
+      var id = (g.getAttribute('data-href') || '').slice(1);
+      if (goTo(id, true) && history.replaceState) history.replaceState(null, '', '#' + id);
+    });
+  });
+
+  // on a phone the diagram scrolls sideways; start with its middle, where the lead is
+  document.querySelectorAll('.diagram-wrap').forEach(function(w){
+    if (w.scrollWidth > w.clientWidth) w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2;
+  });
+
+  // text tables stack on a phone: every cell gets its column name as a label
+  document.querySelectorAll('.slo-table.wide').forEach(function(t){
+    var names = Array.prototype.map.call(t.querySelectorAll('thead th'), function(th){ return th.textContent.trim(); });
+    t.querySelectorAll('tbody tr').forEach(function(tr){
+      Array.prototype.forEach.call(tr.children, function(td, i){ if (names[i]) td.setAttribute('data-label', names[i]); });
+    });
+    t.classList.add('stack');
+  });
+
+  // a link to an accordion (in-page or shared) opens it
+  function openHash(){
+    var id = location.hash.slice(1);
+    var el = id ? document.getElementById(id) : null;
+    if (el && el.classList.contains('acc')) { setOpen(el, true); syncBulk(); }
+  }
+  openHash();
+  window.addEventListener('hashchange', openHash);
+  window.addEventListener('load', function(){ if (location.hash) goTo(location.hash.slice(1), false); });
+</script>
+</body>
+</html>
