@@ -117,7 +117,7 @@
         <a href="https://aboutme.1ms.my/">about<br>me</a>
         <a href="https://1ms.my/">link<br>shortener</a>
         <a href="https://infra.1ms.my/" class="current">Kubernetes platform<br>architecture</a>
-        <a href="#acc-agents">Agentic AI<br>architecture</a>
+        <a href="/agents/">Agentic AI<br>architecture</a>
         <a href="#acc-sre">AI SRE<br>agent</a>
         <a href="https://secrets.1ms.my/">secrets<br>toolkit</a>
         <a href="https://myip.1ms.my/">IP<br>checker</a>
@@ -161,7 +161,7 @@
         </div>
 
         <p class="lede" style="margin-top:18px;">
-          Six public sites are hosted, all operated through GitOps from public GitHub, and two AI agent systems run next to them (<a href="#acc-agents">agents</a>, <a href="#acc-sre">SRE agent</a>). Every site and every platform component on top of the managed OKE cluster is declared in Git and applied by Flux, so releases reach the cluster as Git commits. The code is split across nine small public repositories, eight services with their own CI pipelines and one GitOps repository, to model the structure of a real microservices platform.
+          Six public sites are hosted, all operated through GitOps from public GitHub, and two AI agent systems run next to them (<a href="/agents/">agents</a>, <a href="#acc-sre">SRE agent</a>). Every site and every platform component on top of the managed OKE cluster is declared in Git and applied by Flux, so releases reach the cluster as Git commits. The code is split across nine small public repositories, eight services with their own CI pipelines and one GitOps repository, to model the structure of a real microservices platform.
         </p>
 
         <ul class="site-list">
@@ -462,7 +462,7 @@
           <li><strong>Block Volume</strong> — boot volumes for the worker nodes and one 50&nbsp;GB volume for Prometheus, the only persistent volume in the cluster.</li>
           <li><strong>Container Registry (OCIR)</strong> — private repositories for the eight images the platform builds and runs.</li>
           <li><strong>Vault</strong> — master encryption keys and the secrets they protect. Source of truth for the credentials the workloads use; External Secrets Operator syncs them into Kubernetes Secrets.</li>
-          <li><strong>Autonomous Database (JSON workload)</strong> — managed document store. The URL shortener uses it over SODA REST; the agents keep their memory in a separate schema over ORDS REST-Enabled SQL (see <a href="#acc-agents">agents</a>).</li>
+          <li><strong>Autonomous Database (JSON workload)</strong> — managed document store. The URL shortener uses it over SODA REST; the agents keep their memory in a separate schema over ORDS REST-Enabled SQL (see <a href="/agents/">agents</a>).</li>
           <li><strong>IAM (Dynamic Groups + Policies)</strong> — gives the worker nodes an instance-principal identity. External Secrets Operator uses it to read Vault, so reaching the vault needs no stored credential. The database password and the OCIR pull token are themselves Vault secrets.</li>
         </ul>
                 <div class="code-block">
@@ -1145,7 +1145,7 @@ $ curl -X POST https://1ms.my/shorten \
     -d &#x27;{&quot;url&quot;:&quot;https://docs.kubernetes.io/some/long/path&quot;}&#x27;
 {&quot;short_url&quot;:&quot;https://1ms.my/&lt;6-char code&gt;&quot;}</code></pre>
         </div>
-        <p>The same Autonomous Database also holds the memory of the lead <a href="#acc-agents">AI agent</a> (conversation history and stored facts) in a separate schema. The agent reaches it over HTTPS through ORDS, so the agent image needs no Oracle client or wallet either.</p>
+        <p>The same Autonomous Database also holds the memory of the lead <a href="/agents/">AI agent</a> (conversation history and stored facts) in a separate schema. The agent reaches it over HTTPS through ORDS, so the agent image needs no Oracle client or wallet either.</p>
       </div>
     </article>
 
@@ -1190,63 +1190,8 @@ $ curl -X POST https://1ms.my/shorten \
         <span class="acc-chev"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"></polyline></svg></span>
       </div>
       <div class="acc-body">
-        <p>LLM agents that do engineering work on this platform, driven from Telegram. They run in the <code>agents</code> namespace as six single-replica Deployments from one repository, <a href="https://github.com/AaronShemtov/ai-agents-platform" target="_blank" rel="noopener">AaronShemtov/ai-agents-platform</a>: five run the same image (the coder and the reviewer share one command and differ only by profile), and the GitHub MCP server is GitHub's own image. An agent is configuration rather than code: a profile in <code>agents/*.yaml</code> sets its system prompt, the tools it may call, its model and its step and token limits. CI runs ruff, imports the lead agent's and both MCP servers' entrypoints, runs the test suite, then builds the image on a native arm64 runner.</p>
-        <ul>
-          <li><strong>agent-lead</strong> — the only agent with a Telegram bot, and the one a person talks to. It reads the cluster, works in GitHub and Cloudflare, and hands work to the other two. The bot answers allow-listed Telegram users only; an empty list refuses everyone.</li>
-          <li><strong>agent-coder</strong> — writes application code, Dockerfiles, workflows and manifests. It has no bot, because Telegram never delivers one bot's messages to another; the lead reaches it over the cluster network as one more MCP tool, <code>coder__ask</code>, checked and logged like any other call.</li>
-          <li><strong>agent-reviewer</strong> — reads a change and answers <code>APPROVE</code> or <code>CHANGES REQUESTED</code>; the lead's instructions send every change to it before the work is reported as done. It runs on a different model from the coder, so the review does not inherit the author's blind spots, and it cannot write: its profile allows only read tools and its GitHub write mode is read-only.</li>
-          <li><strong>mcp-github, mcp-cluster, mcp-cloudflare</strong> — the tools, served over MCP's streamable HTTP transport inside the cluster.</li>
-        </ul>
-
-        <h4 style="margin-top:24px;">One credential boundary per pod</h4>
-        <p>The limits that matter sit outside the model's reach, in Kubernetes objects and server flags kept in Git:</p>
-        <ul>
-          <li><strong>mcp-cluster</strong> — the only identity in the namespace with Kubernetes permissions: a ClusterRole with <code>get</code>, <code>list</code> and <code>watch</code> on pods, logs, events, workloads, Services, ConfigMaps and routes. No Secrets, no <code>exec</code>, no write verb. Its readiness probe calls the API server, so broken RBAC shows up as NotReady.</li>
-          <li><strong>mcp-cloudflare</strong> — the only holder of the Cloudflare API token. It exposes 14 tools written for this platform (DNS records, WAF rules, tunnel hostnames, cache purge) and nothing else, and its readiness probe checks the token against Cloudflare.</li>
-          <li><strong>mcp-github</strong> — GitHub's own MCP server, self-hosted so that its toolsets are fixed by flags in Git and enforced server-side. It holds no credential: each agent sends its GitHub token with every request.</li>
-          <li><strong>The agents</strong> — hold the model API key and the GitHub token, and have no Kubernetes permissions at all.</li>
-        </ul>
-
-        <h4 style="margin-top:24px;">Local policy and human approval</h4>
-        <p>Every tool call the model proposes passes a policy check inside the agent before it is sent, and the check reads the arguments, not only the tool name. Each profile also limits which tools the model sees at all; <code>github__delete_*</code> is denied to all three agents.</p>
-        <ul>
-          <li><strong>Reads pass.</strong> A tool counts as a read only by its verb (<code>get_</code>, <code>list_</code>, <code>search_</code> and similar). Anything else is treated as a write, and a tool from an unknown server needs approval.</li>
-          <li><strong>The GitOps repository takes pull requests only.</strong> A write to the default branch of <code>personal-k8s</code> is refused in every write mode. Creating a branch or a pull request is allowed, and merging one asks for approval, because Flux applies the result to the live cluster.</li>
-          <li><strong>Cloudflare changes and delegation to the coder ask first.</strong> A bad commit can be reverted; a deleted DNS record takes a site offline until someone notices. Cluster writes are refused outright, and the ClusterRole could not perform them anyway.</li>
-          <li><strong>Approval happens in Telegram.</strong> The lead posts the tool and its complete arguments, with Approve and Reject buttons on the last message, and waits. No answer within ten minutes counts as a rejection, and the allow-list is checked again on the button press. The coder and the reviewer have nobody to ask, so a call that needs approval is refused there and reported back to the lead.</li>
-        </ul>
-        <div class="code-block">
-          <div class="code-head">
-            <span class="lbl">Agent profile — ai-agents-platform/agents/reviewer.yaml (excerpt)</span>
-          </div>
-<pre class="code"><code><span class="k">model</span>: <span class="s">"gpt-5.1-codex-max"</span>
-<span class="k">mcp_servers</span>:
-  - github
-  - cluster
-<span class="k">allow_tools</span>:
-  - <span class="s">"github__get_*"</span>
-  - <span class="s">"github__list_*"</span>
-  - <span class="s">"github__search_*"</span>
-  - <span class="s">"github__pull_request_read"</span>
-  - <span class="s">"github__issue_read"</span>
-  - <span class="s">"cluster__*"</span>
-<span class="k">deny_tools</span>:
-  - <span class="s">"github__create_*"</span>
-  - <span class="s">"github__update_*"</span>
-  - <span class="s">"github__delete_*"</span>
-  - <span class="s">"github__merge_*"</span>
-  - <span class="s">"github__push_*"</span>
-<span class="k">max_steps</span>: 20</code></pre>
-        </div>
-
-        <h4 style="margin-top:24px;">Models and memory</h4>
-        <ul>
-          <li><strong>Azure AI Foundry</strong> — the lead defaults to <code>gpt-5.6-luna</code> and can be switched per chat with <code>/model</code>; the coder runs <code>gpt-5.3-codex</code> and the reviewer <code>gpt-5.1-codex-max</code>. The client sends each deployment to the Responses or the Chat Completions API as configured, and web search runs as an Azure-hosted tool on the Responses API.</li>
-          <li><strong>Durable memory</strong> — the lead's chat history and the facts it keeps about the user live in the same Autonomous Database as the URL shortener, but in a schema of their own with no grants on the shortener's data. The agent reaches it through ORDS REST-Enabled SQL: plain HTTPS, no Oracle client and no wallet. History is replayed after a restart; <code>/memories</code> lists the stored facts and <code>/forget</code> removes one.</li>
-        </ul>
-
-        <h4 style="margin-top:24px;">Telemetry and audit</h4>
-        <p>The lead and the coder expose Prometheus metrics under the OpenTelemetry GenAI names (<code>gen_ai_client_token_usage</code>, <code>gen_ai_client_operation_duration_seconds</code>, <code>gen_ai_execute_tool_duration_seconds</code> and the agent-invocation histograms), plus <code>agent_*</code> series for policy decisions, approvals and how long a person took to answer. They feed an AI Agents dashboard in Grafana, next to Azure Monitor metrics for the model resource. Every tool call is also one JSON audit line in the pod log, collected into Loki, with the arguments hashed rather than written out.</p>
+        <p>LLM agents that do engineering work on this platform, driven from Telegram: a lead I talk to, a coder it delegates to and a reviewer on a different model that cannot write. They run in the <code>agents</code> namespace as six single-replica Deployments from one repository, <a href="https://github.com/AaronShemtov/ai-agents-platform" target="_blank" rel="noopener">AaronShemtov/ai-agents-platform</a>, and reach GitHub, the cluster and Cloudflare only through MCP servers. Every tool call they send passes a local policy, and the risky ones wait for my approval in Telegram.</p>
+        <p><a href="/agents/">The full architecture has its own page →</a> the diagram, credential boundaries, policy and approval, one turn end to end, the MCP servers, models, memory, metrics and audit, delivery and trade-offs.</p>
       </div>
     </article>
 
@@ -1314,7 +1259,7 @@ $ curl -X POST https://1ms.my/shorten \
           <li><code>infra</code> — infra-frontend × 2</li>
           <li><code>pwd</code> — pwd-frontend × 2</li>
           <li><code>myip</code> — myip-frontend × 2</li>
-          <li><code>agents</code> — agent-lead, agent-coder, agent-reviewer and three MCP servers (GitHub, Cloudflare, cluster) — 6 pods; see <a href="#acc-agents">AI agents</a></li>
+          <li><code>agents</code> — agent-lead, agent-coder, agent-reviewer and three MCP servers (GitHub, Cloudflare, cluster) — 6 pods; see <a href="/agents/">AI agents</a></li>
           <li><code>ai-sre-agent</code> — ai-sre-agent × 1; see <a href="#acc-sre">SRE agent</a></li>
         </ul>
         <p>Platform namespaces:</p>
@@ -1454,7 +1399,7 @@ $ curl -X POST https://1ms.my/shorten \
           <li><strong><a href="https://github.com/AaronShemtov/infra-frontend" target="_blank" rel="noopener">AaronShemtov/infra-frontend</a></strong> — this page.</li>
           <li><strong><a href="https://github.com/AaronShemtov/pwd-frontend" target="_blank" rel="noopener">AaronShemtov/pwd-frontend</a></strong> — the secrets toolkit at secrets.1ms.my: passwords, tokens, basic-auth lines, Kubernetes Secrets and hashes, all computed in the browser; no backend.</li>
           <li><strong><a href="https://github.com/AaronShemtov/myip-frontend" target="_blank" rel="noopener">AaronShemtov/myip-frontend</a></strong> — the public IP and approximate geolocation checker at myip.1ms.my.</li>
-          <li><strong><a href="https://github.com/AaronShemtov/ai-agents-platform" target="_blank" rel="noopener">AaronShemtov/ai-agents-platform</a></strong> — Telegram-driven AI agents with MCP servers for GitHub, Cloudflare and the cluster; one image for the agents and two of the servers (see <a href="#acc-agents">AI agents</a>).</li>
+          <li><strong><a href="https://github.com/AaronShemtov/ai-agents-platform" target="_blank" rel="noopener">AaronShemtov/ai-agents-platform</a></strong> — Telegram-driven AI agents with MCP servers for GitHub, Cloudflare and the cluster; one image for the agents and two of the servers (see <a href="/agents/">AI agents</a>).</li>
           <li><strong><a href="https://github.com/AaronShemtov/ai-sre-agent" target="_blank" rel="noopener">AaronShemtov/ai-sre-agent</a></strong> — a LangGraph incident-investigation agent: asked in Telegram, it gathers pods, events and logs from the cluster and replies with a root-cause analysis (see <a href="#acc-sre">SRE agent</a>).</li>
           <li><strong><a href="https://github.com/AaronShemtov/personal-k8s" target="_blank" rel="noopener">AaronShemtov/personal-k8s</a></strong> — the GitOps source of truth. Contains every Flux Kustomization, HelmRelease and Kubernetes manifest reconciled against the cluster.</li>
         </ul>
@@ -1740,7 +1685,7 @@ $ curl -X POST https://1ms.my/shorten \
       <a href="https://1ms.my/"><span>1ms.my</span><span class="ribbon-sub">link shortener</span></a>
       <a href="https://aboutme.1ms.my/">about me</a>
       <a href="https://infra.1ms.my/">platform architecture</a>
-      <a href="#acc-agents">agentic AI</a>
+      <a href="/agents/">agentic AI</a>
       <a href="#acc-sre">AI SRE agent</a>
       <a href="https://secrets.1ms.my/">secrets toolkit</a>
       <a href="https://myip.1ms.my/">IP checker</a>
@@ -1826,7 +1771,7 @@ $ curl -X POST https://1ms.my/shorten \
     });
   });
 
-  // a hash naming an accordion (the ribbon's #acc-agents and #acc-sre links,
+  // a hash naming an accordion (the ribbon's #acc-sre link, other pages'
   // shared links): open that card and scroll it into view below the sticky ribbon
   function openHashCard(scroll){
     var id = location.hash.slice(1);
